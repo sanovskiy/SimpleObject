@@ -17,55 +17,194 @@
  */
 abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 {
+    /**
+     * @var PDO
+     */
+    public $DBCon;
 
+    /**
+     * @var string
+     */
+    public $DBTable = '';
+
+    /**
+     * @var string
+     */
+    public $idSequence = '';
+
+    /**
+     * @var array
+     */
+    protected $TFields = [];
+
+    /**
+     * @var array
+     */
+    protected $Properties = [];
+
+    /**
+     * @var array
+     */
+    protected $field2PropertyTransform = [];
+
+    /**
+     * @var array
+     */
+    protected $property2FieldTransform = [];
+
+    /**
+     * @var int|null
+     */
+    public $ID = null;
+
+    /**
+     * @var bool
+     */
+    public $noElement = true;
+
+    /**
+     * SimpleObject_Abstract constructor.
+     * @param int|null $ID
+     */
+    function __construct($ID = null)
+    {
+        $this->init();
+        $this->DBCon = SimpleObject::getConnection();
+        if (is_null($ID)) {
+            $this->ID = null;
+            return;
+        }
+
+        $this->ID = $ID;
+        $this->load();
+    }
+
+    /**
+     * @return bool
+     */
+    protected function init()
+    {
+        return true;
+    }
+
+    public function load($pdoReply=null)
+    {
+
+    }
+
+    public function save()
+    {
+
+    }
+
+    public function delete()
+    {
+        $sql = 'DELETE FROM ' . $this->DBTable . ' WHERE ' . $this->TFields[0] . '=' . ':id';
+        $stmt = $this->DBCon->prepare($sql);
+        return $stmt->execute([':id'=>$this->ID]);
+
+    }
+
+    public function has_changes()
+    {
+        //TODO: implenet db diff check
+    }
+
+    public function __toArray()
+    {
+        //TODO: implement to array conversion
+    }
+
+    /**
+     * Iterator implemetation
+     */
+
+    /**
+     * @return bool
+     */
     public function current()
     {
-        // TODO: Implement current() method.
+        $property = current($this->Properties);
+        if ($property) {
+            return $this->{$property};
+        }
+        return false;
     }
+
 
     public function next()
     {
-        // TODO: Implement next() method.
+        $property = next($this->Properties);
+        if ($property) {
+            return $this->{$property};
+        }
+        return false;
     }
+
 
     public function key()
     {
-        // TODO: Implement key() method.
+        return current($this->Properties);
     }
 
     public function valid()
     {
-        // TODO: Implement valid() method.
+        $var = $this->current() !== false;
+        return $var;
     }
 
     public function rewind()
     {
-        // TODO: Implement rewind() method.
+        reset($this->Properties);
     }
 
+    /**
+     * ArrayAccess implementation
+     */
+
+    /**
+     * @param mixed $offset
+     * @return bool
+     */
     public function offsetExists($offset)
     {
-        // TODO: Implement offsetExists() method.
+        return (in_array($offset, $this->Properties) || in_array($offset, $this->TFields));
     }
 
     public function offsetGet($offset)
     {
-        // TODO: Implement offsetGet() method.
+        if (in_array($offset, $this->Properties)) {
+            return $this->$offset;
+        }
+        if (in_array($offset, $this->TFields)) {
+            return $this->{$this->Properties[array_search($offset, $this->TFields)]};
+        }
+        return false;
     }
 
     public function offsetSet($offset, $value)
     {
-        // TODO: Implement offsetSet() method.
+        if (in_array($offset, $this->Properties)) {
+            return $this->$offset = $value;
+        }
+        if (in_array($offset, $this->TFields)) {
+            return $this->{$this->Properties[array_search($offset, $this->TFields)]} = $value;
+        }
+        return false;
     }
 
     public function offsetUnset($offset)
     {
-        // TODO: Implement offsetUnset() method.
+        return false;
     }
 
+    /**
+     * Countable implementation
+     * @return int
+     */
     public function count()
     {
-        // TODO: Implement count() method.
+        return count($this->Properties);
     }
 
 

@@ -22,6 +22,10 @@
 class Model_User extends Model_Base_User
 {
 
+    public function isActive() {
+        return (empty($this->BanExpiration) || $this->BanExpiration < time()) && $this->IsActivated;
+    }
+
     public function test()
     {
         echo 'I\'m simple ' . __CLASS__ . ' model!' . PHP_EOL;

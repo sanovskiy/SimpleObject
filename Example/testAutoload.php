@@ -17,10 +17,26 @@
  *
  */
 
-require_once __DIR__ . '/../SimpleObject.php';
-SimpleObject::init([
-    'models_path' => __DIR__ . DIRECTORY_SEPARATOR . 'Models'
-]);
+$settings = [
+    'path_models' => __DIR__ . DIRECTORY_SEPARATOR . 'Models',
+    'dbcon' => [
+        'host' => 'localhost',
+        'user' => 'simpleobject',
+        'password' => 'kog46zkVcnYBtFu0',
+        'database' => 'simpleobject'
+    ]
+];
 
-$a = new Model_User();
+require_once __DIR__ . '/../SimpleObject.php';
+SimpleObject::init($settings);
+
+$a = new Model_User(1);
 $a->test();
+
+$a->Login = 'USER';
+foreach ($a as $key=>$val){
+    echo $key . ' => '.$val.PHP_EOL;
+}
+echo PHP_EOL;
+
+

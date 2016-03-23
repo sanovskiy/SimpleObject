@@ -26,7 +26,12 @@ class SimpleObject
      * @var array
      */
     static private $default_settings = [
-        'dbcon' => [],
+        'dbcon' => [
+            'host' => 'localhost',
+            'user' => 'root',
+            'password' => '',
+            'database' => 'simpleobject'
+        ],
         'path_models' => ''
     ];
 
@@ -101,6 +106,15 @@ class SimpleObject
         }
         require $path;
         return true;
+    }
+
+    /**
+     * @return PDO
+     */
+    public static function getConnection()
+    {
+        $dbSettings = self::get_settings_value('dbcon');
+        return new PDO('mysql:host='.$dbSettings['host'].';dbname='.$dbSettings['database'], $dbSettings['user'], $dbSettings['password']);
     }
 
 }
