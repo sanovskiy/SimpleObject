@@ -16,7 +16,6 @@
  * limitations under the License.
  *
  */
-
 class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 {
     /**
