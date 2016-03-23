@@ -19,7 +19,6 @@ class SimpleObject_Transform {
 
     public static function apply_transform($transform, $value)
     {
-        $oldValue = $value;
         if (is_array($transform)){
             foreach($transform as $rule){
                 $value = self::apply_transform($rule,$value);
@@ -76,26 +75,6 @@ class SimpleObject_Transform {
             $value = 0;
         }
         return date($format, $value);
-    }
-
-    /**
-     * @param $value
-     * @param array $params
-     * @return null|Zend_Db_Expr
-     */
-    public static function time2dateOra($value, $params = array()) {
-        if (is_null($value)) {
-            return null;
-        }
-        if (!isset($params[1])) {
-            $format = 'DD-MM-YYYY HH24:MI:SS';
-        } else {
-            $format = $params [1];
-        }
-        if (empty($value)) {
-            $value = 0;
-        }
-        return new Zend_Db_Expr('to_date(\'' . date('d-m-Y H:i:s', $value) . '\',\'' . $format . '\')');
     }
 
     /**
@@ -216,8 +195,12 @@ class SimpleObject_Transform {
      */
     public static function SOData($value, $params) {
         $className = $params [1];
+        if (!class_exists($className) || is_subclass_of($className,'SimpleObject_Abstract')){
+            return $value;
+        }
+        /* @var SimpleObject_Abstract $instance */
         $instance = new $className($value);
-        return $instance->toArray();
+        return $instance->__toArray();
     }
 
     /**
