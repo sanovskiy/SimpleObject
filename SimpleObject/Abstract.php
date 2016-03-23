@@ -53,6 +53,11 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     protected $property2FieldTransform = [];
 
     /**
+     * @var array
+     */
+    protected static $runtimeCache = [];
+
+    /**
      * @var int|null
      */
     public $ID = null;
@@ -87,8 +92,43 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         return true;
     }
 
-    public function load($pdoReply=null)
+    public function load()
     {
+        $class = get_class($this);
+        if (
+            isset(self::$runtimeCache[$class][$this->{$this->Properties[0]}]) &&
+            !empty(self::$runtimeCache[$class][$this->{$this->Properties [0]}])
+        ) {
+            $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
+        } else {
+            $sql = 'SELECT `' . implode('`,`',
+                    $this->TFields) . '` FROM `' . $this->DBTable . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
+            $stmt = $this->DBCon->prepare($sql);
+            $stmt->execute([':id' => $this->{$this->Properties[0]}]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $result;
+        }
+
+        if (!is_array($result)) {
+            return false;
+        }
+        $this->noElement = false;
+
+        foreach ($this->Properties as $PropertyID => $PropertyName) {
+            $field = $this->TFields[$PropertyID];
+            $value = $result[$field];
+
+            if (
+                isset($this->field2PropertyTransform [$PropertyID]) &&
+                !is_null($this->field2PropertyTransform [$PropertyID])
+            ) {
+                $this->$PropertyName = SimpleObject_Transform::apply_transform($this->field2PropertyTransform [$PropertyID],
+                    $value);
+            } else {
+                $this->$PropertyName = $value;
+            }
+        }
+        return true;
 
     }
 
@@ -101,7 +141,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     {
         $sql = 'DELETE FROM ' . $this->DBTable . ' WHERE ' . $this->TFields[0] . '=' . ':id';
         $stmt = $this->DBCon->prepare($sql);
-        return $stmt->execute([':id'=>$this->ID]);
+        return $stmt->execute([':id' => $this->ID]);
 
     }
 
@@ -110,9 +150,18 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         //TODO: implenet db diff check
     }
 
-    public function __toArray()
+    public function __toArray($useFieldnames = false)
     {
-        //TODO: implement to array conversion
+        $result = [];
+        foreach ($this->Properties as $index => $property) {
+            $key = $useFieldnames ? $this->TFields[$index] : $property;
+            $value = $this->$property;
+            if ($useFieldnames && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])){
+                $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index],$value);
+            }
+            $result[$key] = $value;
+        }
+        return $result;
     }
 
     /**

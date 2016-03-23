@@ -33,10 +33,6 @@ SimpleObject::init($settings);
 $a = new Model_User(1);
 $a->test();
 
-$a->Login = 'USER';
-foreach ($a as $key=>$val){
-    echo $key . ' => '.$val.PHP_EOL;
-}
-echo PHP_EOL;
-
+print_r($a->__toArray());
+print_r($a->__toArray(true));
 

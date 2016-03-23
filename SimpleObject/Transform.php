@@ -17,4 +17,239 @@
 
 class SimpleObject_Transform {
 
+    public static function apply_transform($transform, $value)
+    {
+        $oldValue = $value;
+        if (is_array($transform)){
+            foreach($transform as $rule){
+                $value = self::apply_transform($rule,$value);
+            }
+            return $value;
+        }
+        $params = explode("|", $transform);
+        $func = $params[0];
+        if (method_exists(__CLASS__,$func)){
+            $value = call_user_func([__CLASS__, $func],$value,$params);
+        }
+        return $value;
+    }
+
+    /**
+     * @param $value
+     * @return mixed
+     */
+    public static function urlCorrect($value) {
+        $value = preg_replace("/^https?\:\/\/?/", "", $value);
+        //$value = preg_replace ( "/^www\./", "", $value );
+        return $value;
+    }
+
+    /**
+     * @param $value
+     * @return int|null
+     */
+    public static function date2time($value) {
+        if (empty($value)) {
+            return null;
+        }
+        return strtotime($value);
+    }
+
+    /**
+     * @param $value
+     * @param array $params
+     * @return bool|null|string
+     */
+    public static function time2date($value, $params = []) {
+        if (is_null($value)) {
+            return null;
+        }
+        if (!isset($params[1])) {
+            $format = 'Y-m-d H:i:s';
+        } else {
+            $format = $params [1];
+        }
+        /*if (strtotime($value)>0){
+            $value = strtotime($value);
+        }*/
+        if (empty($value)) {
+            $value = 0;
+        }
+        return date($format, $value);
+    }
+
+    /**
+     * @param $value
+     * @param array $params
+     * @return null|Zend_Db_Expr
+     */
+    public static function time2dateOra($value, $params = array()) {
+        if (is_null($value)) {
+            return null;
+        }
+        if (!isset($params[1])) {
+            $format = 'DD-MM-YYYY HH24:MI:SS';
+        } else {
+            $format = $params [1];
+        }
+        if (empty($value)) {
+            $value = 0;
+        }
+        return new Zend_Db_Expr('to_date(\'' . date('d-m-Y H:i:s', $value) . '\',\'' . $format . '\')');
+    }
+
+    /**
+     * @param $value
+     * @param array $params
+     * @return float
+     */
+    public static function div($value, $params = array()) {
+        $divider = $params [1];
+        if ($divider == 0) {
+            return $value;
+        }
+        return ($value / $divider);
+    }
+
+    /**
+     * @param $value
+     * @param array $params
+     * @return mixed
+     */
+    public static function mult($value, $params = array()) {
+        $multiplier = $params [1];
+        return ($value * $multiplier);
+    }
+
+    /**
+     * @param $value
+     * @return bool
+     */
+    public static function pgbool2bool($value) {
+        if ('t' == strtolower($value)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @param $value
+     * @return string
+     */
+    public static function bool2pgbool($value) {
+        if ($value) {
+            return 't';
+        } else {
+            return 'f';
+        }
+    }
+
+    /**
+     * @param $value
+     * @return bool
+     */
+    public static function digit2boolean($value) {
+        if (0 >= $value) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * @param $value
+     * @return string
+     */
+    public static function digit2textboolean($value) {
+        if (0 >= $value) {
+            return 'false';
+        } else {
+            return 'true';
+        }
+    }
+
+    /**
+     * @param $value
+     * @return int
+     */
+    public static function boolean2digit($value) {
+        if ($value) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * @param $value
+     * @return string
+     */
+    public static function boolean2text($value) {
+        if ($value) {
+            return 'true';
+        } else {
+            return 'false';
+        }
+    }
+
+    /**
+     * @param $value
+     * @return string
+     */
+    public static function jsonize($value) {
+        return json_encode($value);
+    }
+
+    /**
+     * @param $value
+     * @return mixed
+     */
+    public static function unjsonize($value) {
+        return json_decode($value);
+    }
+
+    /**
+     * @param $value
+     * @param $params
+     * @return mixed
+     */
+    public static function SOData($value, $params) {
+        $className = $params [1];
+        $instance = new $className($value);
+        return $instance->toArray();
+    }
+
+    /**
+     * @param $val
+     * @return string
+     */
+    public static function string($val) {
+        return (string) $val;
+    }
+
+    /**
+     * @param $val
+     * @return int
+     */
+    public static function intVal($val) {
+        return intval($val);
+    }
+
+    /**
+     * @param $string
+     * @param bool $firstCharUpper
+     * @return mixed|string
+     */
+    static public function CCName($string, $firstCharUpper = true) {
+        $s = strtolower($string);
+        $s = str_replace('_', ' ', $s);
+        $s = str_replace('-', ' ', $s);
+        $s = ucwords($s);
+        $s = str_replace(' ', '', $s);
+        if (!$firstCharUpper) {
+            $s = strtolower(substr($s, 0, 1)) . substr($s, 1);
+        }
+        return $s;
+    }
 }

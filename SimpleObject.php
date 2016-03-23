@@ -109,12 +109,22 @@ class SimpleObject
     }
 
     /**
+     * Database connection
+     * @var null|PDO
+     */
+    static private $connection = null;
+
+    /**
      * @return PDO
      */
     public static function getConnection()
     {
-        $dbSettings = self::get_settings_value('dbcon');
-        return new PDO('mysql:host='.$dbSettings['host'].';dbname='.$dbSettings['database'], $dbSettings['user'], $dbSettings['password']);
+        if (is_null(self::$connection))
+        {
+            $dbSettings = self::get_settings_value('dbcon');
+            self::$connection = new PDO('mysql:host='.$dbSettings['host'].';dbname='.$dbSettings['database'], $dbSettings['user'], $dbSettings['password']);
+        }
+        return self::$connection;
     }
 
 }

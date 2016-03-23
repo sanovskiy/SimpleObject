@@ -48,16 +48,16 @@ class Model_Base_User extends SimpleObject_Abstract
     );
 
     protected $field2PropertyTransform = array(
-        5 => 'digit2boolean',
-        6 => 'date2time',
-        7 => 'digit2boolean',
+        5 => ['digit2boolean'],
+        6 => ['date2time'],
+        7 => ['digit2boolean'],
 
     );
 
     protected $property2FieldTransform = array(
-        5 => 'boolean2digit',
-        6 => 'time2date',
-        7 => 'boolean2digit',
+        5 => ['boolean2digit'],
+        6 => ['time2date|Y-m-d H:i:s'],
+        7 => ['boolean2digit'],
 
     );
 
