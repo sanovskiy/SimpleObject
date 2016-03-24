@@ -186,7 +186,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     public function push ($value)
     {
         if ($this->isLocked){
-            throw new Exception('Collection is locked. You can\'t add new elements');
+            throw new Exception('Collection is locked. You can\'t modify elements list');
         }
         if (! is_object($value)) {
             return false;
@@ -203,7 +203,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 
     public function shift(){
         if ($this->isLocked){
-            throw new Exception('Collection is locked. You can\'t add new elements');
+            throw new Exception('Collection is locked. You can\'t modify elements list');
         }
         if (count($this->records)>0){
             return array_shift($this->records);
@@ -213,7 +213,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 
     public function pop(){
         if ($this->isLocked){
-            throw new Exception('Collection is locked. You can\'t add new elements');
+            throw new Exception('Collection is locked. You can\'t modify elements list');
         }
         if (count($this->records)>0){
             return array_pop($this->records);
@@ -224,7 +224,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 	public function unshift ($value)
     {
         if ($this->isLocked){
-            throw new Exception('Collection is locked. You can\'t add new elements');
+            throw new Exception('Collection is locked. You can\'t modify elements list');
         }
         if (! is_object($value)) {
             return false;

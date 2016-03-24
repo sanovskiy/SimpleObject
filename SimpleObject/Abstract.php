@@ -25,7 +25,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     /**
      * @var string
      */
-    public $DBTable = '';
+    protected $DBTable = '';
 
     /**
      * @var string
@@ -92,23 +92,27 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         return true;
     }
 
-    public function load()
+    public function load($data = null)
     {
         $class = get_class($this);
-        if (
-            isset(self::$runtimeCache[$class][$this->{$this->Properties[0]}]) &&
-            !empty(self::$runtimeCache[$class][$this->{$this->Properties [0]}])
-        ) {
-            $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
-        } else {
-            $sql = 'SELECT `' . implode('`,`',
-                    $this->TFields) . '` FROM `' . $this->DBTable . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
-            $stmt = $this->DBCon->prepare($sql);
-            $stmt->execute([':id' => $this->{$this->Properties[0]}]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $result;
-        }
 
+        if (!is_null($data)) {
+            $result = $data;
+        } else {
+            if (
+                isset(self::$runtimeCache[$class][$this->{$this->Properties[0]}]) &&
+                !empty(self::$runtimeCache[$class][$this->{$this->Properties [0]}])
+            ) {
+                $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
+            } else {
+                $sql = 'SELECT `' . implode('`,`',
+                        $this->TFields) . '` FROM `' . $this->DBTable . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
+                $stmt = $this->DBCon->prepare($sql);
+                $stmt->execute([':id' => $this->{$this->Properties[0]}]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $result;
+            }
+        }
         if (!is_array($result)) {
             return false;
         }
@@ -139,24 +143,25 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         foreach ($data as $field => $value) {
             $bind[':' . $field] = $value;
         }
-        if ($this->noElement){
+        if ($this->noElement) {
             $bind[':id'] = null;
-            $sql = 'INSERT INTO `'.$this->DBTable.'` (`'.implode('`,`',$this->TFields).'`) VALUES ('.implode(',',array_keys($bind)).')';
+            $sql = 'INSERT INTO `' . $this->DBTable . '` (`' . implode('`,`',
+                    $this->TFields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
             $stmt = $this->DBCon->prepare($sql);
             $stmt->execute($bind);
             $this->ID = $this->DBCon->lastInsertId();
             $this->noElement = true;
         } else {
-            $sql = 'UPDATE `'.$this->DBTable.'` SET ';
+            $sql = 'UPDATE `' . $this->DBTable . '` SET ';
             $sets = [];
-            foreach ($this->TFields as $key=>$field){
-                if ($key==0){
+            foreach ($this->TFields as $key => $field) {
+                if ($key == 0) {
                     continue;
                 }
-                $sets[] = '`'.$field.'`=:'.$field;
+                $sets[] = '`' . $field . '`=:' . $field;
             }
-            $sql .= implode(',',$sets);
-            $sql .= ' WHERE `'.$this->TFields[0].'`=:'.$this->TFields[0];
+            $sql .= implode(',', $sets);
+            $sql .= ' WHERE `' . $this->TFields[0] . '`=:' . $this->TFields[0];
             $stmt = $this->DBCon->prepare($sql);
             $stmt->execute($bind);
         }
@@ -190,6 +195,11 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $result[$key] = $value;
         }
         return $result;
+    }
+
+
+    public function getFields(){
+        return $this->TFields;
     }
 
     /**
@@ -285,4 +295,20 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     }
 
 
+    /**
+     * @param $name
+     * @return mixed
+     */
+    function __get($name)
+    {
+        switch ($name){
+            case 'DBTable':
+                return $this->DBTable;
+            case 'TFields':
+                return $this->TFields;
+            case 'IDField':
+                return $this->TFields[0];
+        }
+        return null;
+    }
 }

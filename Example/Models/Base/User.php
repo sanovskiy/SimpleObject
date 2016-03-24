@@ -22,7 +22,7 @@
  */
 abstract class Model_Base_User extends SimpleObject_Abstract
 {
-    public $DBTable = 'user';
+    protected $DBTable = 'user';
     protected $TFields = array(
         0 => 'id',
         1 => 'login',
