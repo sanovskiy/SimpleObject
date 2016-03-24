@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -15,33 +16,34 @@
  * limitations under the License.
  *
  */
-
-/**
- * Class Model_User
- */
-class Model_User extends Model_Base_User
+class SimpleObject_PDOStatement extends PDOStatement
 {
 
-    public function isActive() {
-        return (empty($this->BanExpiration) || $this->BanExpiration < time()) && $this->IsActivated;
+    /**
+     * @var SimpleObject_PDO
+     */
+    protected $pdo;
+
+    /**
+     * SimpleObject_PDOStatement constructor.
+     * @param SimpleObject_PDO $pdo
+     */
+    protected function __construct(SimpleObject_PDO $pdo)
+    {
+        $this->pdo = $pdo;
     }
 
-    public function test()
+    /**
+     * @param array|null $input_parameters
+     * @return bool
+     */
+    public function execute(array $input_parameters = null)
     {
-        echo 'I\'m simple ' . __CLASS__ . ' model!' . PHP_EOL;
-    }
-
-    public function save()
-    {
-        if (!$this->isValidMd5($this->Password)){
-            $this->Password = md5($this->Password);
-        }
-        parent::save();
-    }
-
-    private function isValidMd5($md5 ='')
-    {
-        return preg_match('/^[a-f0-9]{32}$/', $md5);
+        $start = $this->pdo->getMicro();
+        $result = parent::execute($input_parameters);
+        $end = $this->pdo->getMicro();
+        $this->pdo->registerTime($start, $end, $this->queryString);
+        return $result;
     }
 
 }

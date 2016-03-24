@@ -18,7 +18,7 @@
 abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 {
     /**
-     * @var PDO
+     * @var SimpleObject_PDO
      */
     public $DBCon;
 
@@ -134,7 +134,35 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 
     public function save()
     {
-
+        $bind = [];
+        $data = $this->__toArray(true);
+        foreach ($data as $field => $value) {
+            $bind[':' . $field] = $value;
+        }
+        if ($this->noElement){
+            $bind[':id'] = null;
+            $sql = 'INSERT INTO `'.$this->DBTable.'` (`'.implode('`,`',$this->TFields).'`) VALUES ('.implode(',',array_keys($bind)).')';
+            $stmt = $this->DBCon->prepare($sql);
+            $stmt->execute($bind);
+            $this->ID = $this->DBCon->lastInsertId();
+            $this->noElement = true;
+        } else {
+            $sql = 'UPDATE `'.$this->DBTable.'` SET ';
+            $sets = [];
+            foreach ($this->TFields as $key=>$field){
+                if ($key==0){
+                    continue;
+                }
+                $sets[] = '`'.$field.'`=:'.$field;
+            }
+            $sql .= implode(',',$sets);
+            $sql .= ' WHERE `'.$this->TFields[0].'`=:'.$this->TFields[0];
+            $stmt = $this->DBCon->prepare($sql);
+            $stmt->execute($bind);
+        }
+        $class = get_class($this);
+        self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $data;
+        return true;
     }
 
     public function delete()
@@ -156,8 +184,8 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         foreach ($this->Properties as $index => $property) {
             $key = $useFieldnames ? $this->TFields[$index] : $property;
             $value = $this->$property;
-            if ($useFieldnames && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])){
-                $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index],$value);
+            if ($useFieldnames && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
+                $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $value);
             }
             $result[$key] = $value;
         }

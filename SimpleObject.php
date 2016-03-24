@@ -115,14 +115,14 @@ class SimpleObject
     static private $connection = null;
 
     /**
-     * @return PDO
+     * @return SimpleObject_PDO
      */
     public static function getConnection()
     {
         if (is_null(self::$connection))
         {
             $dbSettings = self::get_settings_value('dbcon');
-            self::$connection = new PDO('mysql:host='.$dbSettings['host'].';dbname='.$dbSettings['database'], $dbSettings['user'], $dbSettings['password']);
+            self::$connection = new SimpleObject_PDO('mysql:host='.$dbSettings['host'].';dbname='.$dbSettings['database'], $dbSettings['user'], $dbSettings['password']);
         }
         return self::$connection;
     }
