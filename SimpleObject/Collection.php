@@ -41,7 +41,6 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         }
         $collection = new self;
         if ($data instanceof PDOStatement) {
-            var_dump($data->rowCount());
             while ($row = $data->fetch()) {
                 /*  @var SimpleObject_Abstract $object */
                 $object = new $model_name;
@@ -53,12 +52,9 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
             $object = new $model_name;
             list($sql, $bind) = $data->getQuery(false, $object->DBTable, $object->IDField);
             $stmt = SimpleObject::getConnection()->prepare($sql);
-            var_dump([$sql,$bind]);
-            if (!$stmt->execute($bind)){
+            if (!$stmt->execute($bind)) {
                 $PDOError = $stmt->errorInfo();
-                var_dump($PDOError);
-                throw new SimpleObject_Exception('PDOStatement failed to execute query: '.$stmt->queryString.' '.$PDOError);
-
+                throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError);
             }
             return self::factory($model_name, $stmt);
         }
@@ -242,22 +238,22 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
             throw new Exception(self::ERROR_CLASS_MISMATCH);
         }
         array_unshift($this->records, $value);
-        $this->totalCount++;
         $this->records = array_values($this->records);
     }
 
     /**
-     * @param bool $sort
+     * @param bool $reverse
+     * @param string $field
      * @throws Exception
      */
-    public function reindexByField($reverse = false,$field='ID')
+    public function reindexByField($reverse = false, $field = 'ID')
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
         }
         $result = [];
-        foreach ($this as $item) {
-            $result[$item->{$field}] = $item;
+        for ($index = 0; $index < count($this->records); $index++) {
+            $result[$this->records[$index]->{$field}] = $this->records[$index];
         }
         if ($reverse) {
             krsort($result);
@@ -299,7 +295,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     public function getFromEach($property)
     {
         $values = [];
-        foreach ($this->records as $index=>$element){
+        foreach ($this->records as $index => $element) {
             $values[$index] = $element->{$property};
         }
         //for ($index = 0; $index < count($this->records); $index++) {
@@ -316,7 +312,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      */
     public function getElementsByPropertyValue($property, $value)
     {
-        $elements = new SimpleObject_Collection();
+        $elements = new self;
         for ($index = 0; $index < count($this->records); $index++) {
             if (!property_exists($this->records[$index], $property)) {
                 throw new SimpleObject_Exception('Objects in current set does not have property ' . $property);
@@ -336,7 +332,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      */
     public function getElementsByFunctionResult($method, $value)
     {
-        $elements = new SimpleObject_Collection();
+        $elements = new self;
         for ($index = 0; $index < count($this->records); $index++) {
             if (!method_exists($this->records[$index], $method)) {
                 throw new SimpleObject_Exception('Objects in current set does not have method ' . $method);
@@ -445,12 +441,22 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      */
     public function offsetSet($offset, $value)
     {
-        if ($value instanceof $this->className) {
-            if (is_null($offset)) {
-                return $this->records[] = $value;
-            } elseif (isset($this->records[$offset]) || $offset == count($this->records) + 1) {
-                return $this->records[$offset] = $value;
-            }
+        if ($this->isLocked) {
+            throw new Exception(self::ERROR_LOCKED);
+        }
+        if (!is_object($value) || !is_numeric($offset)) {
+            return false;
+        }
+        if (is_null($this->className) || empty($this->className)) {
+            $this->className = get_class($value);
+        }
+        if (!($value instanceof $this->className) && !is_subclass_of($value, $this->className)) {
+            throw new Exception(self::ERROR_CLASS_MISMATCH);
+        }
+        if (is_null($offset)) {
+            return $this->records[] = $value;
+        } elseif (isset($this->records[$offset]) || $offset == max(array_keys($this->records)) + 1) {
+            return $this->records[$offset] = $value;
         }
         return false;
     }
