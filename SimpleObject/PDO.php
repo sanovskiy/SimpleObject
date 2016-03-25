@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -15,6 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
+ */
+
+/**
+ * Class SimpleObject_PDO
  */
 class SimpleObject_PDO extends PDO
 {

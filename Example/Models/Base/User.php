@@ -36,7 +36,7 @@ abstract class Model_Base_User extends SimpleObject_Abstract
     );
 
     protected $Properties = array(
-        0 => 'ID',
+        0 => 'Id',
         1 => 'Login',
         2 => 'Password',
         3 => 'Email',
@@ -61,7 +61,7 @@ abstract class Model_Base_User extends SimpleObject_Abstract
 
     );
 
-    public $ID;
+    public $Id;
     public $Login;
     public $Password;
     public $Email;

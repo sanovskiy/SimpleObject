@@ -14,13 +14,19 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ */
+
+/**
+ * Class SimpleObject_Abstract
+ * @property string $DBTable
  */
 abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 {
     /**
      * @var SimpleObject_PDO
      */
-    public $DBCon;
+    protected $DBCon;
 
     /**
      * @var string
@@ -60,7 +66,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     /**
      * @var int|null
      */
-    public $ID = null;
+    public $Id = null;
 
     /**
      * @var bool
@@ -69,18 +75,18 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 
     /**
      * SimpleObject_Abstract constructor.
-     * @param int|null $ID
+     * @param int|null $id
      */
-    function __construct($ID = null)
+    function __construct($id = null)
     {
         $this->init();
         $this->DBCon = SimpleObject::getConnection();
-        if (is_null($ID)) {
-            $this->ID = null;
+        if (is_null($id)) {
+            $this->Id = null;
             return;
         }
 
-        $this->ID = $ID;
+        $this->Id = $id;
         $this->load();
     }
 
@@ -118,15 +124,15 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         }
         $this->noElement = false;
 
-        foreach ($this->Properties as $PropertyID => $PropertyName) {
-            $field = $this->TFields[$PropertyID];
+        foreach ($this->Properties as $PropertyId => $PropertyName) {
+            $field = $this->TFields[$PropertyId];
             $value = $result[$field];
 
             if (
-                isset($this->field2PropertyTransform [$PropertyID]) &&
-                !is_null($this->field2PropertyTransform [$PropertyID])
+                isset($this->field2PropertyTransform [$PropertyId]) &&
+                !is_null($this->field2PropertyTransform [$PropertyId])
             ) {
-                $this->$PropertyName = SimpleObject_Transform::apply_transform($this->field2PropertyTransform [$PropertyID],
+                $this->$PropertyName = SimpleObject_Transform::apply_transform($this->field2PropertyTransform [$PropertyId],
                     $value);
             } else {
                 $this->$PropertyName = $value;
@@ -149,7 +155,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                     $this->TFields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
             $stmt = $this->DBCon->prepare($sql);
             $stmt->execute($bind);
-            $this->ID = $this->DBCon->lastInsertId();
+            $this->Id = $this->DBCon->lastInsertId();
             $this->noElement = true;
         } else {
             $sql = 'UPDATE `' . $this->DBTable . '` SET ';
@@ -174,22 +180,22 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     {
         $sql = 'DELETE FROM ' . $this->DBTable . ' WHERE ' . $this->TFields[0] . '=' . ':id';
         $stmt = $this->DBCon->prepare($sql);
-        return $stmt->execute([':id' => $this->ID]);
+        return $stmt->execute([':id' => $this->Id]);
 
     }
 
-    public function has_changes()
+    public function hasChanges()
     {
-        //TODO: implenet db diff check
+        //TODO: implement db diff check
     }
 
-    public function __toArray($useFieldnames = false)
+    public function __toArray($useFieldNames = false)
     {
         $result = [];
         foreach ($this->Properties as $index => $property) {
-            $key = $useFieldnames ? $this->TFields[$index] : $property;
+            $key = $useFieldNames ? $this->TFields[$index] : $property;
             $value = $this->$property;
-            if ($useFieldnames && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
+            if ($useFieldNames && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
                 $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $value);
             }
             $result[$key] = $value;
@@ -306,7 +312,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                 return $this->DBTable;
             case 'TFields':
                 return $this->TFields;
-            case 'IDField':
+            case 'IdField':
                 return $this->TFields[0];
         }
         return null;

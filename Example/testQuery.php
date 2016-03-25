@@ -37,8 +37,8 @@ $filters
     ->order('login')
 ;
 $users = SimpleObject_Collection::factory('Model_User', $filters);
-var_dump($users->getFromEach('ID'));
+var_dump($users->getFromEach('Id'));
 $users->reindexByField();
-var_dump($users->getFromEach('ID'));
+var_dump($users->getFromEach('Id'));
 echo $users->count() . PHP_EOL;
 print_r(SimpleObject::getConnection()->getUsageInfo());

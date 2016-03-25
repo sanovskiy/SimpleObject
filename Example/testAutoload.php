@@ -60,7 +60,7 @@ for($i=0;$i<100000;$i++) {
         }
 
     }
-    //$c=new Model_User($b->ID);
+    //$c=new Model_User($b->Id);
 }
 echo PHP_EOL;
 */

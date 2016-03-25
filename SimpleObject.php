@@ -14,6 +14,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
 /**
@@ -44,7 +45,7 @@ class SimpleObject
      * @param $name
      * @return null
      */
-    public static function get_settings_value($name)
+    public static function getSettingsValue($name)
     {
         if (isset(self::$settings[$name])) {
             return self::$settings[$name];
@@ -57,7 +58,7 @@ class SimpleObject
 
     /**
      * Must be called BEFORE any usage of library
-     * @param $models_path
+     * @param $options
      */
     public static function init($options)
     {
@@ -70,7 +71,7 @@ class SimpleObject
      * @param array $settings
      * @return bool
      */
-    private static function validate_settings(array $settings)
+    private static function validateSettings(array $settings)
     {
         //TODO: implement options validation
         return true;
@@ -83,12 +84,13 @@ class SimpleObject
     public static function autoload($classname)
     {
         if (preg_match('/^Model\_/', $classname)) {
-            return self::load_model($classname);
+            return self::loadModel($classname);
         }
         $classpath = __DIR__ . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR, $classname) . '.php';
         if (!file_exists($classpath)) {
             return false;
         }
+        /** @noinspection PhpIncludeInspection */
         require $classpath;
         return true;
     }
@@ -97,14 +99,16 @@ class SimpleObject
      * @param $modelname
      * @return bool
      */
-    private static function load_model($modelname)
+    private static function loadModel($modelname)
     {
         $realname = preg_replace('/^Model\_(.+)$/', '$1', $modelname);
-        $path = self::$settings['path_models'] . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR, $realname) . '.php';
-        if (!file_exists($path)) {
+        $modelpath = self::$settings['path_models'] . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR,
+                $realname) . '.php';
+        if (!file_exists($modelpath)) {
             return false;
         }
-        require $path;
+        /** @noinspection PhpIncludeInspection */
+        require $modelpath;
         return true;
     }
 
@@ -119,10 +123,10 @@ class SimpleObject
      */
     public static function getConnection()
     {
-        if (is_null(self::$connection))
-        {
-            $dbSettings = self::get_settings_value('dbcon');
-            self::$connection = new SimpleObject_PDO('mysql:host='.$dbSettings['host'].';dbname='.$dbSettings['database'], $dbSettings['user'], $dbSettings['password']);
+        if (is_null(self::$connection)) {
+            $dbSettings = self::getSettingsValue('dbcon');
+            self::$connection = new SimpleObject_PDO('mysql:host=' . $dbSettings['host'] . ';dbname=' . $dbSettings['database'],
+                $dbSettings['user'], $dbSettings['password']);
         }
         return self::$connection;
     }

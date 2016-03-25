@@ -13,6 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
 /**
@@ -39,7 +40,7 @@ class SimpleObject_Filter implements Iterator
     protected $_entries = [];
     protected $andWhere = true;
     protected $distinct = false;
-    protected $IDonly = false;
+    protected $idOnly = false;
 
     static public function getNewInstance()
     {
@@ -94,12 +95,11 @@ class SimpleObject_Filter implements Iterator
     public function addfilter($field, $value, $cmp = "=")
     {
         $this->_entries[] = [$field, $value, $cmp];
-        $this->count = count($this->_entries);
         return $this;
     }
 
     /**
-     * @param boolean $bool
+     * @param boolean $or_instead_and
      * @return SimpleObject_Filter
      */
     public function orQuery($or_instead_and)
@@ -163,7 +163,7 @@ class SimpleObject_Filter implements Iterator
         if ($countQuery) {
             $columns = 'count(*)';
         } else {
-            $columns = $this->IDonly ? $idfield : '*';
+            $columns = $this->idOnly ? $idfield : '*';
         }
         $select = 'SELECT' . ($this->distinct ? ' DISTINCT' : '') . ' ' . $columns . ' FROM ' . $table . ' WHERE ';
         $where = [];
@@ -232,12 +232,12 @@ class SimpleObject_Filter implements Iterator
     }
 
     /**
-     * @param bool $eh
+     * @param bool $idOnly
      * @return SimpleObject_Filter
      */
-    public function setIDonly($idOnly = true)
+    public function setIdOnly($idOnly = true)
     {
-        $this->IDonly = $idOnly;
+        $this->idOnly = $idOnly;
         return $this;
     }
 

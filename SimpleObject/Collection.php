@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -15,6 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
+ */
+
+/**
+ * Class SimpleObject_Collection
  */
 class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 {
@@ -50,7 +53,8 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         } elseif ($data instanceof SimpleObject_Filter) {
             /*  @var SimpleObject_Abstract $object */
             $object = new $model_name;
-            $data->build(false, $object->DBTable, $object->IDField);
+            /** @noinspection PhpUndefinedFieldInspection */
+            $data->build(false, $object->DBTable, $object->IdField);
             $stmt = SimpleObject::getConnection()->prepare($data->getSQL());
             if (!$stmt->execute($data->getBind())) {
                 $PDOError = $stmt->errorInfo();
@@ -134,25 +138,25 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 
     /**
      * Returns $n-th element
-     * @param int $num
-     * @return mixed
+     * @param int $n
+     * @return null
      */
     public function getElement($n = 0)
     {
         return isset($this->records[$n]) ? $this->records[$n] : null;
     }
 
-    private $returnedIDs = [];
+    private $returnedIdList = [];
 
     /**
      * @return bool
      */
     public function getNextRandomElement()
     {
-        $forSelect = array_values(array_diff(array_keys($this->records), $this->returnedIDs));
+        $forSelect = array_values(array_diff(array_keys($this->records), $this->returnedIdList));
         if (count($forSelect) > 0) {
             $returnIndex = $forSelect[mt_rand(0, count($forSelect) - 1)];
-            $this->returnedIDs[] = $returnIndex;
+            $this->returnedIdList[] = $returnIndex;
             return $this->records[$returnIndex];
         }
         return false;
@@ -163,7 +167,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      */
     public function resetRandom()
     {
-        $this->returnedIDs = [];
+        $this->returnedIdList = [];
     }
 
     /**
@@ -186,6 +190,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
             throw new Exception(self::ERROR_CLASS_MISMATCH);
         }
         array_push($this->records, $value);
+        return true;
     }
 
     /**
@@ -239,6 +244,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         }
         array_unshift($this->records, $value);
         $this->records = array_values($this->records);
+        return true;
     }
 
     /**
@@ -246,7 +252,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      * @param string $field
      * @throws Exception
      */
-    public function reindexByField($reverse = false, $field = 'ID')
+    public function reindexByField($reverse = false, $field = 'Id')
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
@@ -438,6 +444,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      * @param mixed $offset
      * @param mixed $value
      * @return bool|mixed|string
+     * @throws Exception
      */
     public function offsetSet($offset, $value)
     {
