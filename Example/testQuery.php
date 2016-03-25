@@ -34,7 +34,7 @@ $filters = SimpleObject_Filter::getNewInstance();
 $filters
     ->like('login', '%666%')
     ->lt('id', 1000)
-    ->setOrder('login')
+    ->order('login')
 ;
 $users = SimpleObject_Collection::factory('Model_User', $filters);
 var_dump($users->getFromEach('ID'));

@@ -50,9 +50,9 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         } elseif ($data instanceof SimpleObject_Filter) {
             /*  @var SimpleObject_Abstract $object */
             $object = new $model_name;
-            list($sql, $bind) = $data->getQuery(false, $object->DBTable, $object->IDField);
-            $stmt = SimpleObject::getConnection()->prepare($sql);
-            if (!$stmt->execute($bind)) {
+            $data->build(false, $object->DBTable, $object->IDField);
+            $stmt = SimpleObject::getConnection()->prepare($data->getSQL());
+            if (!$stmt->execute($data->getBind())) {
                 $PDOError = $stmt->errorInfo();
                 throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError);
             }
