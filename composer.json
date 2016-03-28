@@ -1,0 +1,8 @@
+{
+  "name": "sanovskiy/simple-object",
+  "description": "Simple MySQL ORM",
+  "require": {
+    "php": ">=5.4.0",
+    "sanovskiy/simple-console": "1.*"
+  }
+}
