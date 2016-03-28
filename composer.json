@@ -1,15 +1,18 @@
 {
   "name": "sanovskiy/simple-object",
   "description": "Simple MySQL ORM",
+  "version": "2.0.19",
   "keywords": [
     "ORM"
   ],
   "type": "library",
-  "license": "Apache2",
+  "license": "Apache-2.0",
   "authors": [
     {
       "name": "Pavel Terentyev",
-      "homepage": "http://terentyev.info"
+      "email": "pavel.terentyev@gmail.com",
+      "homepage": "http://terentyev.info",
+      "role": "Developer"
     }
   ],
   "autoload": {
