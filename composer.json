@@ -1,8 +1,23 @@
 {
   "name": "sanovskiy/simple-object",
   "description": "Simple MySQL ORM",
+  "keywords": [
+    "ORM"
+  ],
+  "type": "library",
+  "license": "Apache2",
+  "authors": [
+    {
+      "name": "Pavel Terentyev",
+      "homepage": "http://terentyev.info"
+    }
+  ],
+  "autoload": {
+    "files": ["lib/bootstrap.php"]
+  },
   "require": {
     "php": ">=5.4.0",
-    "sanovskiy/simple-console": "1.*"
+    "sanovskiy/simple-console": "*",
+    "gossi/php-code-generator": "~0"
   }
 }

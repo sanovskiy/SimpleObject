@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  */
-
+require_once __DIR__ . '/../../SimpleConsole/SimpleConsole.php';
 
 $settings = [
     'path_models' => __DIR__ . DIRECTORY_SEPARATOR . 'Models',
@@ -30,15 +30,6 @@ $settings = [
 require_once __DIR__ . '/../SimpleObject.php';
 SimpleObject::init($settings);
 
-$filters = SimpleObject_Filter::getNewInstance();
-$filters
-    ->like('login', '%666%')
-    ->lt('id', 1000)
-    ->order('login')
-;
-$users = SimpleObject_Collection::factory('Model_User', $filters);
-var_dump($users->getFromEach('Login'));
-$users->reindexByField();
-var_dump($users->getFromEach('Login'));
-echo $users->count() . PHP_EOL;
-print_r(SimpleObject::getConnection()->getUsageInfo());
+SimpleObject::reverseEngineerModels();
+
+SimpleConsole::getInstance()->showDump(SimpleObject::getConnection()->getUsageInfo());
