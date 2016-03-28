@@ -21,9 +21,13 @@
  */
 class SimpleObject_Autoload
 {
+    /**
+     * Registers autoloader for SimpleObject
+     * @return bool
+     */
     public static function register()
     {
-        spl_autoload_register(['SimpleObject_Autoload', 'autoload']);
+        return spl_autoload_register(['SimpleObject_Autoload', 'autoload']);
     }
 
     /**
@@ -35,7 +39,7 @@ class SimpleObject_Autoload
         if (preg_match('/^Model\_/', $classname)) {
             return self::loadModel($classname);
         }
-        $classpath = __DIR__ . DIRECTORY_SEPARATOR . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR,
+        $classpath = realpath(__DIR__ . DIRECTORY_SEPARATOR . '..') . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR,
                 $classname) . '.php';
         if (!file_exists($classpath)) {
             return false;
