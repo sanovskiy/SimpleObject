@@ -20,9 +20,11 @@
 /**
  * Class SimpleObject_Abstract
  * @property string $DBTable
+ * @property string $SimpleObjectConfigName
  */
 abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 {
+    protected $SimpleObjectConfigName = 'default';
     /**
      * @var SimpleObject_PDO
      */
@@ -80,7 +82,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     function __construct($id = null)
     {
         $this->init();
-        $this->DBCon = SimpleObject::getConnection();
+        $this->DBCon = SimpleObject::getConnection($this->SimpleObjectConfigName);
         if (is_null($id)) {
             $this->Id = null;
             return;
@@ -314,6 +316,8 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                 return $this->TFields;
             case 'IdField':
                 return $this->TFields[0];
+            case 'SimpleObjectConfigName':
+                return $this->SimpleObjectConfigName;
         }
         return null;
     }
