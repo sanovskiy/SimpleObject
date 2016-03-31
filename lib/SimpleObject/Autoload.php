@@ -58,7 +58,8 @@ class SimpleObject_Autoload
     {
         $realname = preg_replace('/^Model\_(.+)$/', '$1', $modelname);
         $modelNameParts = explode('_', $realname);
-        $configNames = array_walk(SimpleObject::getConfigNames(), 'strtolower');
+        $configNames = SimpleObject::getConfigNames();
+        $configNames = array_map('strtolower',$configNames);
         $probableConfigName = strtolower($modelNameParts[0]);
         $modelsPath = SimpleObject::getSettingsValue('path_models', 'default');
         if (!in_array($probableConfigName, SimpleObject::getRestrictedConfigNames()) && in_array($probableConfigName,$configNames) && count($modelNameParts) > 1) {
