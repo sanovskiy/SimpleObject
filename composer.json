@@ -1,7 +1,7 @@
 {
   "name": "sanovskiy/simple-object",
   "description": "Simple MySQL ORM",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "keywords": [
     "ORM"
   ],

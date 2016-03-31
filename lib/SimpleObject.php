@@ -49,6 +49,13 @@ class SimpleObject
     ];
 
     /**
+     * @var array
+     */
+    protected static $restrictedConfigNames = [
+        'base'
+    ];
+
+    /**
      * @param $name
      * @return null
      */
@@ -63,12 +70,29 @@ class SimpleObject
         return null;
     }
 
+    public static function getConfigNames()
+    {
+        return array_keys(self::$settings);
+    }
+
+
+    /**
+     * @return array
+     */
+    public static function getRestrictedConfigNames()
+    {
+        return self::$restrictedConfigNames;
+    }
+
     /**
      * Must be called BEFORE any usage of library
      * @param $options
      */
     public static function init($options,$configName='default')
     {
+        if (in_array(strtolower($configName),self::$restrictedConfigNames)){
+            throw new Exception('You can\'t use \''.$configName.'\' as a config name due to ORM limitations');
+        }
         self::$settings[$configName] = $options;
     }
 
@@ -108,10 +132,10 @@ class SimpleObject
      */
     protected static function wipeBaseModels($configName='default')
     {
-        if (!file_exists(self::getSettingsValue('path_models',$configName) . '/Base/')){
-            mkdir(self::getSettingsValue('path_models',$configName) . '/Base/');
+        if (!file_exists(self::getSettingsValue('path_models',$configName) . '/Base')){
+            mkdir(self::getSettingsValue('path_models',$configName) . '/Base');
         }
-        $dir = opendir(self::getSettingsValue('path_models',$configName) . '/Base/');
+        $dir = opendir(self::getSettingsValue('path_models',$configName) . '/Base');
         while ($file = readdir($dir)) {
             if (is_dir(self::getSettingsValue('path_models',$configName) . '/Base/' . $file)) {
                 continue;
@@ -120,7 +144,19 @@ class SimpleObject
         }
     }
 
-    public static function reverseEngineerModels($configName='default')
+    public static function reverseEngineerModels($configName=null)
+    {
+        if (is_null($configName)){
+            $configNames = self::getConfigNames();
+        } else {
+            $configNames = [$configName];
+        }
+        foreach ($configNames as $_configName){
+            self::doReverseEngineerModels($_configName);
+        }
+    }
+
+    protected static function doReverseEngineerModels($configName='default')
     {
         if (!class_exists('SimpleConsole')){
             throw new SimpleObject_Exception('SimpleConsole needed');
@@ -154,12 +190,15 @@ class SimpleObject
             $tableName = $tableRow[0];
             $CC->indentedEcho('Table '.SimpleConsole_Colors::colorize($tableName,SimpleConsole_Colors::LIGHT_BLUE).'... ',SimpleConsole_Colors::GRAY);
             $CCName = SimpleObject_Transform::CCName($tableName);
-
+            $CCConfigName = '';
+            if ('default' != $configName){
+                $CCConfigName = SimpleObject_Transform::CCName($configName).'_';
+            }
             $tableInfo = [
                 'table_name' => $tableName,
                 'file_name' => $CCName.'.php',
-                'class_name' => 'Model_'.$CCName,
-                'base_class_name' => 'Model_Base_' . $CCName,
+                'class_name' => 'Model_'.$CCConfigName.$CCName,
+                'base_class_name' => 'Model_'.$CCConfigName.'Base_' . $CCName,
                 'fields' => []
             ];
 

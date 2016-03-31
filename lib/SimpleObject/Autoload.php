@@ -39,7 +39,8 @@ class SimpleObject_Autoload
         if (preg_match('/^Model\_/', $classname)) {
             return self::loadModel($classname);
         }
-        $classpath = realpath(__DIR__ . DIRECTORY_SEPARATOR . '..') . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR,
+        $classpath = realpath(__DIR__ . DIRECTORY_SEPARATOR . '..') . DIRECTORY_SEPARATOR . str_replace('_',
+                DIRECTORY_SEPARATOR,
                 $classname) . '.php';
         if (!file_exists($classpath)) {
             return false;
@@ -56,13 +57,23 @@ class SimpleObject_Autoload
     private static function loadModel($modelname)
     {
         $realname = preg_replace('/^Model\_(.+)$/', '$1', $modelname);
-        $modelpath = SimpleObject::getSettingsValue('path_models') . DIRECTORY_SEPARATOR .
-                str_replace('_', DIRECTORY_SEPARATOR, $realname) . '.php';
-        if (!file_exists($modelpath)) {
+        $modelNameParts = explode('_', $realname);
+        $configNames = array_walk(SimpleObject::getConfigNames(), 'strtolower');
+        $probableConfigName = strtolower($modelNameParts[0]);
+        $modelsPath = SimpleObject::getSettingsValue('path_models', 'default');
+        if (!in_array($probableConfigName, SimpleObject::getRestrictedConfigNames()) && in_array($probableConfigName,$configNames) && count($modelNameParts) > 1) {
+            $modelsPath = SimpleObject::getSettingsValue('path_models', $probableConfigName);
+            unset($modelNameParts[0]);
+            $realname = implode('_', $modelNameParts);
+        }
+
+        $modelPath = $modelsPath . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR, $realname) . '.php';
+
+        if (!file_exists($modelPath)) {
             return false;
         }
         /** @noinspection PhpIncludeInspection */
-        require $modelpath;
+        require $modelPath;
         return true;
     }
 }

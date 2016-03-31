@@ -40,10 +40,10 @@ class SimpleObject_PDOStatement extends PDOStatement
      * @param array|null $input_parameters
      * @return bool
      */
-    public function execute(array $input_parameters = null)
+    public function execute($bound_input_params = NULL)
     {
         $start = $this->pdo->getMicro();
-        $result = parent::execute($input_parameters);
+        $result = parent::execute($bound_input_params);
         $end = $this->pdo->getMicro();
         $this->pdo->registerTime($start, $end, $this->queryString);
         return $result;
