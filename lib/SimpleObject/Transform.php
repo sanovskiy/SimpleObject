@@ -232,6 +232,7 @@ class SimpleObject_Transform {
         $s = strtolower($string);
         $s = str_replace('_', ' ', $s);
         $s = str_replace('-', ' ', $s);
+        $s = str_replace('/', '_', $s);
         $s = ucwords($s);
         $s = str_replace(' ', '', $s);
         if (!$firstCharUpper) {
