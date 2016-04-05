@@ -178,6 +178,16 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         return true;
     }
 
+    protected function getPropertyId($property)
+    {
+        return array_search($property,$this->Properties);
+    }
+
+    protected function getFieldId($field)
+    {
+        return array_search($field,$this->TFields);
+    }
+
     public function delete()
     {
         $sql = 'DELETE FROM ' . $this->DBTable . ' WHERE ' . $this->TFields[0] . '=' . ':id';

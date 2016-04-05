@@ -240,4 +240,14 @@ class SimpleObject_Transform {
         }
         return $s;
     }
+
+    public static function serialize($data)
+    {
+        return serialize($data);
+    }
+
+    public static function unserialize($data)
+    {
+        return unserialize($data);
+    }
 }
