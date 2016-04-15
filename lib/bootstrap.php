@@ -16,5 +16,6 @@
  *
  */
 
+/** @noinspection PhpIncludeInspection */
 require __DIR__.DIRECTORY_SEPARATOR.'SimpleObject'.DIRECTORY_SEPARATOR.'Autoload.php';
 SimpleObject_Autoload::register();

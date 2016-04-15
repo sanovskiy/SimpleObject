@@ -238,6 +238,9 @@ class SimpleObject_Transform {
         if (!$firstCharUpper) {
             $s = strtolower(substr($s, 0, 1)) . substr($s, 1);
         }
+        if (preg_match('/^\d/',$s)){
+            $s = 'd'.$s;
+        }
         return $s;
     }
 

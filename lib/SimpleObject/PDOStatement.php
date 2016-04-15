@@ -37,8 +37,9 @@ class SimpleObject_PDOStatement extends PDOStatement
     }
 
     /**
-     * @param array|null $input_parameters
+     * @param mixed $bound_input_params
      * @return bool
+     * @internal param array|null $input_parameters
      */
     public function execute($bound_input_params = NULL)
     {

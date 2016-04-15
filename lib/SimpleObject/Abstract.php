@@ -20,15 +20,23 @@
 /**
  * Class SimpleObject_Abstract
  * @property string $DBTable
- * @property string $SimpleObjectConfigName
+ * @property string $SimpleObjectConfigNameRead
+ * @property string $SimpleObjectConfigNameWrite
  */
 abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 {
-    protected $SimpleObjectConfigName = 'default';
+    protected $SimpleObjectConfigNameRead = 'default';
+    protected $SimpleObjectConfigNameWrite = 'default';
+
     /**
      * @var SimpleObject_PDO
      */
-    protected $DBCon;
+    protected $DBConWrite;
+
+    /**
+     * @var SimpleObject_PDO
+     */
+    protected $DBConRead;
 
     /**
      * @var string
@@ -82,7 +90,8 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     function __construct($id = null)
     {
         $this->init();
-        $this->DBCon = SimpleObject::getConnection($this->SimpleObjectConfigName);
+        $this->DBConRead = SimpleObject::getConnection($this->SimpleObjectConfigNameRead);
+        $this->DBConWrite = SimpleObject::getConnection($this->SimpleObjectConfigNameWrite);
         if (is_null($id)) {
             $this->Id = null;
             return;
@@ -115,7 +124,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             } else {
                 $sql = 'SELECT `' . implode('`,`',
                         $this->TFields) . '` FROM `' . $this->DBTable . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
-                $stmt = $this->DBCon->prepare($sql);
+                $stmt = $this->DBConRead->prepare($sql);
                 $stmt->execute([':id' => $this->{$this->Properties[0]}]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $result;
@@ -155,9 +164,9 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $bind[':id'] = null;
             $sql = 'INSERT INTO `' . $this->DBTable . '` (`' . implode('`,`',
                     $this->TFields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
-            $stmt = $this->DBCon->prepare($sql);
+            $stmt = $this->DBConWrite->prepare($sql);
             $stmt->execute($bind);
-            $this->Id = $this->DBCon->lastInsertId();
+            $this->Id = $this->DBConWrite->lastInsertId();
             $this->noElement = true;
         } else {
             $sql = 'UPDATE `' . $this->DBTable . '` SET ';
@@ -170,7 +179,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             }
             $sql .= implode(',', $sets);
             $sql .= ' WHERE `' . $this->TFields[0] . '`=:' . $this->TFields[0];
-            $stmt = $this->DBCon->prepare($sql);
+            $stmt = $this->DBConWrite->prepare($sql);
             $stmt->execute($bind);
         }
         $class = get_class($this);
@@ -191,7 +200,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     public function delete()
     {
         $sql = 'DELETE FROM ' . $this->DBTable . ' WHERE ' . $this->TFields[0] . '=' . ':id';
-        $stmt = $this->DBCon->prepare($sql);
+        $stmt = $this->DBConWrite->prepare($sql);
         return $stmt->execute([':id' => $this->Id]);
 
     }
@@ -221,7 +230,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * Iterator implemetation
+     * Iterator implementation
      */
 
     /**
@@ -326,8 +335,10 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                 return $this->TFields;
             case 'IdField':
                 return $this->TFields[0];
-            case 'SimpleObjectConfigName':
-                return $this->SimpleObjectConfigName;
+            case 'SimpleObjectConfigNameRead':
+                return $this->SimpleObjectConfigNameRead;
+            case 'SimpleObjectConfigNameWrite':
+                return $this->SimpleObjectConfigNameWrite;
         }
         return null;
     }
