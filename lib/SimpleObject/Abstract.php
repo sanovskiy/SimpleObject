@@ -167,7 +167,9 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $stmt = $this->DBConWrite->prepare($sql);
             $stmt->execute($bind);
             $this->Id = $this->DBConWrite->lastInsertId();
-            $this->noElement = true;
+            if ($this->Id){
+                $this->noElement = false;
+            }
         } else {
             $sql = 'UPDATE `' . $this->DBTable . '` SET ';
             $sets = [];

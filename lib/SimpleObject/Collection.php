@@ -58,7 +58,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
             $stmt = SimpleObject::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
             if (!$stmt->execute($data->getBind())) {
                 $PDOError = $stmt->errorInfo();
-                throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError);
+                throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
             }
             return self::factory($model_name, $stmt);
         }

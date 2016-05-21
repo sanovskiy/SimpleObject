@@ -125,7 +125,7 @@ class SimpleObject_Filter implements Iterator
     public function __toArray()
     {
         return [
-            'sql' => $this->getSQL(),
+            'sql'  => $this->getSQL(),
             'bind' => $this->getBind()
         ];
     }
@@ -135,7 +135,7 @@ class SimpleObject_Filter implements Iterator
      */
     public function getSQL()
     {
-        if (is_null($this->sql)){
+        if (is_null($this->sql)) {
             $this->build();
         }
         return $this->sql;
@@ -146,7 +146,7 @@ class SimpleObject_Filter implements Iterator
      */
     public function getBind()
     {
-        if (is_null($this->bind)){
+        if (is_null($this->bind)) {
             $this->build();
         }
         return $this->bind;
@@ -165,12 +165,12 @@ class SimpleObject_Filter implements Iterator
         } else {
             $columns = $this->idOnly ? $idfield : '*';
         }
-        $select = 'SELECT' . ($this->distinct ? ' DISTINCT' : '') . ' ' . $columns . ' FROM ' . $table . ' WHERE ';
+        $select = 'SELECT' . ($this->distinct ? ' DISTINCT' : '') . ' ' . $columns . ' FROM ' . $table;
         $where = [];
         $bind = [];
-        $order = '';
         $limit = '';
         $offset = '';
+        $order = [];
         foreach ($this as $index => $filter) {
             $bind_index = ':param' . $index;
             switch (strtoupper($filter["cmp"])) {
@@ -212,22 +212,30 @@ class SimpleObject_Filter implements Iterator
                     break;
                 case '{ORDER}':
                     if (!$countQuery) {
-                        $order = ' ORDER BY `' . $filter["key"] . '` ' . ($filter["value"]=='DESC'?'DESC':'ASC');
+                        $order[] = '`' . $filter["key"] . '` ' . ($filter["value"] == 'DESC' ? 'DESC' : 'ASC');
                     }
                     break;
                 case "{LIMIT}":
                     if (!$countQuery) {
-                        $limit = ' LIMIT ' . strtoupper($filter["value"]);
+                        $limit = ' LIMIT ' . strtoupper($filter["key"]);
                     }
                     break;
                 case "{OFFSET}":
                     if (!$countQuery) {
-                        $offset = ' OFFSET ' . strtoupper($filter["value"]);
+                        $offset = ' OFFSET ' . strtoupper($filter["key"]);
                     }
                     break;
             }
         }
-        $this->sql = $select . implode($this->andWhere ? ' AND ' : ' OR ', $where) . $order . $limit . $offset;
+        $whereStr = '';
+        if (count($where) > 0) {
+            $whereStr = (' WHERE ' . implode($this->andWhere ? ' AND ' : ' OR ', $where));
+        }
+        $orderStr = '';
+        if (count($order) > 0) {
+            $orderStr = ' ORDER BY ' . implode(',', $order);
+        }
+        $this->sql = $select . $whereStr . $orderStr . $limit . $offset;
         $this->bind = $bind;
     }
 
@@ -324,11 +332,11 @@ class SimpleObject_Filter implements Iterator
         if ($var == null) {
             return $var;
         }
-        return array(
-            "key" => $var[0],
+        return [
+            "key"   => $var[0],
             "value" => $var[1],
-            "cmp" => $var[2]
-        );
+            "cmp"   => $var[2]
+        ];
     }
 
     /**
