@@ -37,7 +37,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
      * @return SimpleObject_Collection
      * @throws SimpleObject_Exception
      */
-    static function factory($model_name, $data)
+    static function factory($model_name, $data=null)
     {
         if (!class_exists($model_name)) {
             throw new SimpleObject_Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
@@ -50,9 +50,12 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
                 $object->load($row);
                 $collection->push($object);
             }
-        } elseif ($data instanceof SimpleObject_Filter) {
+        } elseif ($data instanceof SimpleObject_Filter || is_null($data)) {
             /*  @var SimpleObject_Abstract $object */
             $object = new $model_name;
+            if (is_null($data)){
+                $data = SimpleObject_Filter::getNewInstance()->gt($object->getFields()[0],0);
+            }
             /** @noinspection PhpUndefinedFieldInspection */
             $data->build(false, $object->DBTable, $object->IdField);
             $stmt = SimpleObject::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
