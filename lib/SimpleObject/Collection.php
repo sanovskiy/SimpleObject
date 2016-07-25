@@ -361,6 +361,14 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         return $this->records;
     }
 
+    function __get($name)
+    {
+        $elem = $this->current();
+        if (in_array($name,$elem->Properties)){
+            return $elem->{$name};
+        }
+    }
+
 
     /**
      * Iterator implemetation
