@@ -335,6 +335,8 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                 return $this->DBTable;
             case 'TFields':
                 return $this->TFields;
+            case 'Properties':
+                return $this->Properties;
             case 'IdField':
                 return $this->TFields[0];
             case 'SimpleObjectConfigNameRead':
