@@ -212,13 +212,13 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         //TODO: implement db diff check
     }
 
-    public function __toArray($useFieldNames = false)
+    public function __toArray($useFieldNames = false,$applyTransform=false)
     {
         $result = [];
         foreach ($this->Properties as $index => $property) {
             $key = $useFieldNames ? $this->TFields[$index] : $property;
             $value = $this->$property;
-            if ($useFieldNames && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
+            if ($applyTransform && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
                 $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $value);
             }
             $result[$key] = $value;
@@ -241,7 +241,11 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     public function current()
     {
         $property = current($this->Properties);
-        if ($property) {
+        if (in_array($property,$this->Properties)) {
+            $index = array_search($property,$this->Properties);
+            if (isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
+                return SimpleObject_Transform::apply_transform($this->property2FieldTransform[ $index ], $this->{$property});
+            }
             return $this->{$property};
         }
         return false;
