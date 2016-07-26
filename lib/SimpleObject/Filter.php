@@ -41,6 +41,15 @@ class SimpleObject_Filter implements Iterator
     protected $andWhere = true;
     protected $distinct = false;
     protected $idOnly = false;
+    protected $isPaged = false;
+
+    /**
+     * @return boolean
+     */
+    public function isPaged()
+    {
+        return $this->isPaged;
+    }
 
     static public function getNewInstance()
     {
@@ -86,6 +95,34 @@ class SimpleObject_Filter implements Iterator
     }
 
     /**
+     * @return int|bool
+     */
+    public function getLimit()
+    {
+        foreach ($this->_entries as $filter) {
+            if ('{limit}' == $filter[2]) {
+                return $filter[0];
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return int|bool
+     */
+    public function getOffset()
+    {
+        foreach ($this->_entries as $filter) {
+            if ('{offset}' == $filter[2]) {
+                return $filter[0];
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Adds new filter
      * @param string $field
      * @param string $value
@@ -95,6 +132,7 @@ class SimpleObject_Filter implements Iterator
     public function addfilter($field, $value, $cmp = "=")
     {
         $this->_entries[] = [$field, $value, $cmp];
+
         return $this;
     }
 
@@ -105,6 +143,7 @@ class SimpleObject_Filter implements Iterator
     public function orQuery($or_instead_and)
     {
         $this->andWhere = !$or_instead_and;
+
         return $this;
     }
 
@@ -126,29 +165,31 @@ class SimpleObject_Filter implements Iterator
     {
         return [
             'sql'  => $this->getSQL(),
-            'bind' => $this->getBind()
+            'bind' => $this->getBind(),
         ];
     }
 
     /**
-     * @return null
+     * @return string
      */
     public function getSQL()
     {
         if (is_null($this->sql)) {
             $this->build();
         }
+
         return $this->sql;
     }
 
     /**
-     * @return null
+     * @return array
      */
     public function getBind()
     {
         if (is_null($this->bind)) {
             $this->build();
         }
+
         return $this->bind;
     }
 
@@ -183,12 +224,12 @@ class SimpleObject_Filter implements Iterator
                 case "<=":
                 case ">=":
                     $where[] = '`' . $filter["key"] . '`' . $filter["cmp"] . $bind_index;
-                    $bind[$bind_index] = $filter['value'];
+                    $bind[ $bind_index ] = $filter['value'];
                     break;
                 case "LIKE":
                 case "NOT LIKE":
                     $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"] . ' ' . $bind_index;
-                    $bind[$bind_index] = $filter['value'];
+                    $bind[ $bind_index ] = $filter['value'];
                     break;
                 case "IS NULL":
                 case "IS NOT NULL":
@@ -201,13 +242,13 @@ class SimpleObject_Filter implements Iterator
                         foreach (array_values($filter["value"]) as $key => $value) {
                             $subindex = $bind_index . '_' . $key;
                             $subindexes[] = $subindex;
-                            $bind[$subindex] = $value;
+                            $bind[ $subindex ] = $value;
                         }
                         $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"] . ' (' . implode(',',
                                 $subindexes) . ')';
                     } else {
                         $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"] . ' (' . $bind_index . ')';
-                        $bind[$bind_index] = $filter['value'];
+                        $bind[ $bind_index ] = $filter['value'];
                     }
                     break;
                 case '{ORDER}':
@@ -246,6 +287,7 @@ class SimpleObject_Filter implements Iterator
     public function setIdOnly($idOnly = true)
     {
         $this->idOnly = $idOnly;
+
         return $this;
     }
 
@@ -256,8 +298,10 @@ class SimpleObject_Filter implements Iterator
      */
     public function page($page, $limitOnPage)
     {
+        $this->isPaged = true;
         $offset = $limitOnPage * ($page - 1);
         $this->limit($limitOnPage, $offset);
+
         return $this;
     }
 
@@ -268,6 +312,7 @@ class SimpleObject_Filter implements Iterator
     public function distinct($distinct = false)
     {
         $this->distinct = $distinct;
+
         return $this;
     }
 
@@ -279,6 +324,7 @@ class SimpleObject_Filter implements Iterator
     public function order($field = 'id', $direction = 'ASC')
     {
         $this->addfilter($field, $direction, '{order}');
+
         return $this;
     }
 
@@ -293,6 +339,7 @@ class SimpleObject_Filter implements Iterator
         if ($offset > 0) {
             $this->addfilter($offset, null, '{offset}');
         }
+
         return $this;
     }
 
@@ -308,6 +355,7 @@ class SimpleObject_Filter implements Iterator
                 return true;
             }
         }
+
         return false;
     }
 
@@ -332,10 +380,11 @@ class SimpleObject_Filter implements Iterator
         if ($var == null) {
             return $var;
         }
+
         return [
             "key"   => $var[0],
             "value" => $var[1],
-            "cmp"   => $var[2]
+            "cmp"   => $var[2],
         ];
     }
 
@@ -345,6 +394,7 @@ class SimpleObject_Filter implements Iterator
     public function key()
     {
         $var = key($this->_entries);
+
         return $var;
     }
 
@@ -354,6 +404,7 @@ class SimpleObject_Filter implements Iterator
     public function next()
     {
         $var = next($this->_entries);
+
         return $var;
     }
 
@@ -363,6 +414,7 @@ class SimpleObject_Filter implements Iterator
     public function valid()
     {
         $var = $this->current() !== false;
+
         return $var;
     }
 

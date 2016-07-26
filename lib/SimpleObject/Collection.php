@@ -32,6 +32,11 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     protected $isUnlockable = true;
 
     /**
+     * @var SimpleObject_Filter
+     */
+    protected $filters = null;
+
+    /**
      * @param $model_name
      * @param PDOStatement|SimpleObject_Filter|array $data
      * @return SimpleObject_Collection
@@ -56,6 +61,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
             if (is_null($data)){
                 $data = SimpleObject_Filter::getNewInstance()->gt($object->getFields()[0],0);
             }
+
             /** @noinspection PhpUndefinedFieldInspection */
             $data->build(false, $object->DBTable, $object->IdField);
             $stmt = SimpleObject::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
@@ -63,11 +69,21 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
                 $PDOError = $stmt->errorInfo();
                 throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
             }
-            return self::factory($model_name, $stmt);
+            $collection = self::factory($model_name, $stmt);
+            $collection->setFilters($data);
         }
         return $collection;
     }
 
+    /**
+     * @param null $filters
+     */
+    public function setFilters(SimpleObject_Filter $filters)
+    {
+        $this->filters = $filters;
+    }
+
+    //<editor-fold desc="Collection interface">
     /**
      * SimpleObject_Collection constructor.
      * @param array $data Elements array
@@ -138,6 +154,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         $this->className = $name;
         return $this;
     }
+    //</editor-fold>
 
     /**
      * Returns $n-th element
@@ -149,6 +166,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         return isset($this->records[$n]) ? $this->records[$n] : null;
     }
 
+    //<editor-fold desc="Random access">
     private $returnedIdList = [];
 
     /**
@@ -172,7 +190,9 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     {
         $this->returnedIdList = [];
     }
+    //</editor-fold>
 
+    //<editor-fold desc="Array behavior">
     /**
      * @param $value
      * @return bool
@@ -249,7 +269,9 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         $this->records = array_values($this->records);
         return true;
     }
+    //</editor-fold>
 
+    //<editor-fold desc="Custom items actions">
     /**
      * @param bool $reverse
      * @param string $field
@@ -367,13 +389,52 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         if (in_array($name,$object->Properties)){
             return implode(' ',$this->getFromEach($name));
         }
+        return null;
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Paging">
+    public function getPage()
+    {
+        if (!$this->filters->isPaged()){
+            return false;
+        }
+        $offset = $this->filters->getOffset();
+        $limit = $this->filters->getLimit();
+        return ($offset/$limit) + 1;
     }
 
-
     /**
-     * Iterator implemetation
+     * @return bool|int
+     * @throws SimpleObject_Exception
      */
+    public function getTotalPagedCount()
+    {
+        if (!$this->filters->isPaged()){
+            return false;
+        }
+        $object = new $this->className;
+        /** @noinspection PhpUndefinedFieldInspection */
+        $this->filters->build(true, $object->DBTable, $object->IdField);
+        $stmt = SimpleObject::getConnection($object->SimpleObjectConfigNameRead)->prepare($this->filters->getSQL());
+        if (!$stmt->execute($this->filters->getBind())) {
+            $PDOError = $stmt->errorInfo();
+            throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
+        }
 
+        return intval($stmt->fetchColumn());
+    }
+
+    public function getRecordsCountOnPage()
+    {
+        if (!$this->filters->isPaged()){
+            return false;
+        }
+        return $this->filters->getLimit();
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Iterator implementation">
     /**
      *
      */
@@ -487,5 +548,6 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     {
         return false;
     }
+    //</editor-fold>
 
 }
