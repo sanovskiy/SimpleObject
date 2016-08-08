@@ -189,7 +189,7 @@ class SimpleObject_Transform {
      * @return mixed
      */
     public static function unjsonize($value) {
-        return json_decode($value);
+        return json_decode($value,true);
     }
 
     /**
