@@ -158,7 +158,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     public function save()
     {
         $bind = [];
-        $data = $this->__toArray(true);
+        $data = $this->__toArray(true,true);
         foreach ($data as $field => $value) {
             $bind[ ':' . $field ] = $value;
         }
