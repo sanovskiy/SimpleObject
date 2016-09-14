@@ -1,7 +1,7 @@
 {
   "name": "sanovskiy/simple-object",
   "description": "Simple MySQL ORM",
-  "version": "2.3.3",
+  "version": "2.4.0",
   "keywords": [
     "ORM"
   ],
@@ -12,6 +12,11 @@
       "name": "Pavel Terentyev",
       "email": "pavel.terentyev@gmail.com",
       "homepage": "http://terentyev.info",
+      "role": "Developer"
+    },
+    {
+      "name": "Dmitry Shtygin",
+      "email": "mimas@list.ru",
       "role": "Developer"
     }
   ],
