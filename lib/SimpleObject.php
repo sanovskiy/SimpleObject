@@ -42,7 +42,8 @@ class SimpleObject
             'host' => 'localhost',
             'user' => 'root',
             'password' => '',
-            'database' => 'simpleobject'
+            'database' => 'simpleobject',
+            'charset' => 'utf8'
         ],
         'path_models' => '',
         'read_connection' => null,
@@ -281,8 +282,12 @@ class SimpleObject
     {
         if (!isset(self::$connections[$configName]) || is_null(self::$connections[$configName])) {
             $dbSettings = self::getSettingsValue('dbcon', $configName);
-            self::$connections[$configName] = new SimpleObject_PDO('mysql:host=' . $dbSettings['host'] . ';dbname=' . $dbSettings['database'],
-                $dbSettings['user'], $dbSettings['password']);
+            $connectString = 'mysql:host=' . $dbSettings['host'] . ';';
+            if(isset($dbSettings['socket'])){
+                $connectString = 'mysql:unix_socket=' . $dbSettings['socket'] . ';';
+            }
+            $connectString = $connectString.'dbname=' . $dbSettings['database'] . ';charset=' . $dbSettings['charset'];
+            self::$connections[$configName] = new SimpleObject_PDO($connectString, $dbSettings['user'], $dbSettings['password']);
         }
         return self::$connections[$configName];
     }
