@@ -22,6 +22,8 @@
  * @property string $DBTable
  * @property string $SimpleObjectConfigNameRead
  * @property string $SimpleObjectConfigNameWrite
+ * @property array $field2PropertyTransform
+ * @property array $property2FieldTransform
  */
 abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 {
@@ -399,6 +401,10 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                 return $this->SimpleObjectConfigNameRead;
             case 'SimpleObjectConfigNameWrite':
                 return $this->SimpleObjectConfigNameWrite;
+            case 'property2FieldTransform':
+                return $this->property2FieldTransform;
+            case 'field2PropertyTransform':
+                return $this->field2PropertyTransform;
         }
 
         return null;
