@@ -145,7 +145,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
 
         foreach ($this->Properties as $PropertyId => $PropertyName) {
             $field = $this->TFields[ $PropertyId ];
-            if (!isset($data[$field])){
+            if (!isset($result[$field])){
                 continue;
             }
             $value = $result[ $field ];
