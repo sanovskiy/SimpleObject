@@ -1,7 +1,7 @@
 {
   "name": "sanovskiy/simple-object",
   "description": "Simple MySQL ORM",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "keywords": [
     "ORM"
   ],
@@ -17,7 +17,7 @@
     {
       "name": "Dmitry Shtygin",
       "email": "mimas@list.ru",
-      "role": "Developer"
+      "role": "Contributor"
     }
   ],
   "autoload": {
