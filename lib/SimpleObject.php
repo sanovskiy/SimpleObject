@@ -166,7 +166,9 @@ class SimpleObject
             $BaseModel
                 ->setName($tableInfo['base_class_name'])
                 ->setParentClassName('SimpleObject_Abstract')
-                ->setAbstract(true);
+                ->setAbstract(true)
+                ->setDescription('Base class for model '.$tableInfo['class_name'])
+            ;
 
             $writeConfigName = $configName;
             $readConfigName = $configName;
@@ -177,74 +179,106 @@ class SimpleObject
 
             $BaseModel->setProperty(
                 PhpProperty::create('SimpleObjectConfigNameWrite')
-                    ->setDefaultValue($writeConfigName)
+                    ->setValue($writeConfigName)
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
             );
             $BaseModel->setProperty(
                 PhpProperty::create('SimpleObjectConfigNameRead')
-                    ->setDefaultValue($readConfigName)
+                    ->setValue($readConfigName)
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
             );
             $BaseModel->setProperty(
                 PhpProperty::create('DBTable')
-                    ->setDefaultValue($tableInfo['table_name'])
+                    ->setValue($tableInfo['table_name'])
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
             );
 
             $TFields = [];
             $Properties = [];
+            $Comments = [];
             $field2PropertyTransform = [];
             $property2FieldTransform = [];
+            $colVal = [];
 
-            $sql = 'DESCRIBE `' . $tableName . '`';
+            //$sql = 'DESCRIBE `' . $tableName . '`';
+            $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table AND table_schema = :database';
+            $bind = [
+                ':table' => $tableName,
+                ':database' => $dbSettings['database']
+            ];
             $stmt = self::getConnection($configName)->prepare($sql);
-            $stmt->execute();
+            $stmt->execute($bind);
             $fields = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($fields as $num => $_row) {
-                $TFields[$num] = $_row['Field'];
-                $Properties[$num] = SimpleObject_Transform::CCName($_row['Field']);
 
-                switch ($_row['Type']) {
-                    default:
-                        //$CC->dropText($_row['Type']);
-                        break;
+            foreach ($fields as $num => $_row) {
+                $TFields[$num] = $_row['COLUMN_NAME'];
+                $Properties[$num] = SimpleObject_Transform::CCName($_row['COLUMN_NAME']);
+
+                switch ($_row['DATA_TYPE']) {
                     case 'timestamp':
                     case 'date':
                     case 'datetime':
                         $field2PropertyTransform[$num][] = 'date2time';
                         $property2FieldTransform[$num][] = 'time2date|Y-m-d H:i:s';
+                        $colVal[$num] = 'integer';
                         break;
-                    case 'tinyint(1)':
+                    case 'tinyint':
                         $field2PropertyTransform[$num][] = 'digit2boolean';
                         $property2FieldTransform[$num][] = 'boolean2digit';
+                        $colVal[$num] = 'boolean';
                         break;
+                    case 'int':
+                        $colVal[$num] = 'integer';
+                        break;
+                    case 'enum':
+                        $colVal[$num] = 'string';
+                        break;
+                    default:
+                        $colVal[$num] = 'string';
+                        //$CC->dropText($_row['Type']);
+                        break;
+                }
+                if (!empty($_row['COLUMN_COMMENT'])){
+                    $Comments[$num] = $_row['COLUMN_COMMENT'];
                 }
             }
             $BaseModel->setProperty(
                 PhpProperty::create('TFields')
-                    ->setDefaultValue($TFields)
+                    ->setExpression(self::arrayToString($TFields))
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
+                    ->setDescription(['Table fields','@var array'])
             );
             $BaseModel->setProperty(
                 PhpProperty::create('Properties')
-                    ->setDefaultValue($Properties)
+                    ->setExpression(self::arrayToString($Properties))
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
+                    ->setDescription(['Model properties','@var array'])
             );
             $BaseModel->setProperty(
                 PhpProperty::create('field2PropertyTransform')
-                    ->setDefaultValue($field2PropertyTransform)
+                    ->setExpression(self::arrayToString($field2PropertyTransform))
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
+                    ->setDescription(['Transformations after data load from DB','@var array'])
             );
             $BaseModel->setProperty(
                 PhpProperty::create('property2FieldTransform')
-                    ->setDefaultValue($property2FieldTransform)
+                    ->setExpression(self::arrayToString($property2FieldTransform))
                     ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
+                    ->setDescription(['Transformations before data write to DB','@var array'])
             );
-            foreach ($Properties as $property) {
-                $BaseModel->setProperty(
-                    PhpProperty::create($property)
-                        ->setVisibility(AbstractPhpMember::VISIBILITY_PUBLIC)
-                );
+            foreach ($Properties as $num => $property) {
+                $_prop = PhpProperty::create($property)->setVisibility(AbstractPhpMember::VISIBILITY_PUBLIC);
+                $_desc = [];
+                if (isset($Comments[$num])){
+                    $_desc[] = $Comments[$num];
+                }
+                if (isset($colVal[$num])){
+                    $_desc[] = '@val '.$colVal[$num];
+                }
+                if (count($_desc)>0){
+                    $_prop->setDescription($_desc);
+                }
+                $BaseModel->setProperty($_prop);
 
             }
             $BaseCode = file_get_contents(__DIR__ . '/CodeParts/base_model_head.php') . $generator->generate($BaseModel);
@@ -254,6 +288,31 @@ class SimpleObject
         }
         $CC->dropLF();
         $CC->dropText('All done.');
+    }
+
+    protected static function arrayToString($array,$indent = 0)
+    {
+        if (!is_array($array)){
+            return $array;
+        }
+        $str = '['.PHP_EOL;
+        $recs = [];
+        foreach ($array as $key=>$value){
+            $keyStr = (is_numeric($key)?$key:'\''.$key.'\'');
+            if (is_array($value)){
+                $recs[] = str_repeat("\t",$indent+1).$keyStr.' => '.self::arrayToString($value,$indent+1);
+                continue;
+            }
+            if (is_string($value)){
+                $recs[] = str_repeat("\t",$indent+1).$keyStr.' => \''.str_replace('\\','\\\\',$value).'\'';
+                continue;
+            }
+            $recs[] = str_repeat("\t",$indent).$keyStr.' => '.$value;
+
+        }
+        $str .= implode(', '.PHP_EOL,$recs);
+        $str .= PHP_EOL.str_repeat("\t",$indent).']';
+        return $str;
     }
 
     /**
