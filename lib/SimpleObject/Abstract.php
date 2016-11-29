@@ -118,7 +118,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
      * @param bool $applyTransform
      * @return bool
      */
-    public function load($data = null,$applyTransform=true)
+    public function load($data = null, $applyTransform = true)
     {
         $class = get_class($this);
 
@@ -126,17 +126,17 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $result = $data;
         } else {
             if (
-                isset(self::$runtimeCache[ $class ][ $this->{$this->Properties[0]} ]) &&
-                !empty(self::$runtimeCache[ $class ][ $this->{$this->Properties [0]} ])
+                isset(self::$runtimeCache[$class][$this->{$this->Properties[0]}]) &&
+                !empty(self::$runtimeCache[$class][$this->{$this->Properties [0]}])
             ) {
-                $result = self::$runtimeCache[ $class ][ $this->{$this->Properties [0]} ];
+                $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
             } else {
                 $sql = 'SELECT `' . implode('`,`',
                         $this->TFields) . '` FROM `' . $this->DBTable . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
                 $stmt = $this->DBConRead->prepare($sql);
                 $stmt->execute([':id' => $this->{$this->Properties[0]}]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                self::$runtimeCache[ $class ][ $this->{$this->Properties [0]} ] = $result;
+                self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $result;
             }
         }
         if (!is_array($result)) {
@@ -144,27 +144,27 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         }
 
         foreach ($this->Properties as $PropertyId => $PropertyName) {
-            $field = $this->TFields[ $PropertyId ];
-            if (!isset($result[$field])){
+            $field = $this->TFields[$PropertyId];
+            if (!isset($result[$field])) {
                 continue;
             }
-            $value = $result[ $field ];
+            $value = $result[$field];
 
             if (
                 $applyTransform &&
-                isset($this->field2PropertyTransform [ $PropertyId ]) &&
-                !is_null($this->field2PropertyTransform [ $PropertyId ])
+                isset($this->field2PropertyTransform [$PropertyId]) &&
+                !is_null($this->field2PropertyTransform [$PropertyId])
             ) {
-                $this->$PropertyName = SimpleObject_Transform::apply_transform($this->field2PropertyTransform [ $PropertyId ], $value);
+                $this->$PropertyName = SimpleObject_Transform::apply_transform($this->field2PropertyTransform [$PropertyId], $value);
             } else {
                 $this->$PropertyName = $value;
             }
         }
-        
-        if ($this->Id){
+
+        if ($this->Id) {
             $this->notExistInStorage = false;
         }
-        
+
         return true;
 
     }
@@ -176,17 +176,22 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     public function save()
     {
         $bind = [];
-        $data = $this->__toArray(true,true);
+        $success = false;
+        $data = $this->__toArray(true, true);
         foreach ($data as $field => $value) {
-            $bind[ ':' . $field ] = $value;
+            $bind[':' . $field] = $value;
         }
         if ($this->notExistInStorage) {
             $bind[':id'] = null;
             $sql = 'INSERT INTO `' . $this->DBTable . '` (`' . implode('`,`',
                     $this->TFields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
             $stmt = $this->DBConWrite->prepare($sql);
-            $stmt->execute($bind);
-            $this->Id = $this->DBConWrite->lastInsertId();
+            $success = $stmt->execute($bind);
+            if (!$success && $stmt->errorCode()) {
+                $error = $stmt->errorInfo();
+                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . $this->DBTable, $error[0]);
+            }
+            $this->Id = $this->DBConWrite->lastInsertId($this->DBTable);
             if ($this->Id) {
                 $this->notExistInStorage = false;
             }
@@ -202,12 +207,16 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $sql .= implode(',', $sets);
             $sql .= ' WHERE `' . $this->TFields[0] . '`=:' . $this->TFields[0];
             $stmt = $this->DBConWrite->prepare($sql);
-            $stmt->execute($bind);
+            $success = $stmt->execute($bind);
+            if (!$success && $stmt->errorCode()) {
+                $error = $stmt->errorInfo();
+                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . $this->DBTable, $error[0]);
+            }
         }
         $class = get_class($this);
-        self::$runtimeCache[ $class ][ $this->{$this->Properties [0]} ] = $data;
+        self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $data;
 
-        return true;
+        return $success;
     }
 
     /**
@@ -217,12 +226,12 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
      */
     public function populate(array $data = [])
     {
-        if(!is_array($data)) {
+        if (!is_array($data)) {
             return false;
         }
-        
-        foreach ($data as $Property => $value){
-            if (!in_array($Property,$this->Properties)){
+
+        foreach ($data as $Property => $value) {
+            if (!in_array($Property, $this->Properties)) {
                 continue;
             }
             $this->$Property = $value;
@@ -259,12 +268,12 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     {
         $result = [];
         foreach ($this->Properties as $index => $property) {
-            $key = $useFieldNames ? $this->TFields[ $index ] : $property;
+            $key = $useFieldNames ? $this->TFields[$index] : $property;
             $value = $this->$property;
-            if ($applyTransform && isset($this->property2FieldTransform[ $index ]) && !empty($this->property2FieldTransform[ $index ])) {
-                $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[ $index ], $value);
+            if ($applyTransform && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
+                $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $value);
             }
-            $result[ $key ] = $value;
+            $result[$key] = $value;
         }
 
         return $result;
@@ -338,13 +347,13 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     public function offsetGet($offset)
     {
         if (in_array($offset, $this->TFields)) {
-            $offset = $this->Properties[ array_search($offset, $this->TFields) ];
+            $offset = $this->Properties[array_search($offset, $this->TFields)];
         }
 
         if (in_array($offset, $this->Properties)) {
             $index = array_search($offset, $this->Properties);
-            if (isset($this->property2FieldTransform[ $index ]) && !empty($this->property2FieldTransform[ $index ])) {
-                return SimpleObject_Transform::apply_transform($this->property2FieldTransform[ $index ], $this->{$offset});
+            if (isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
+                return SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $this->{$offset});
             }
 
             return $this->{$offset};
@@ -359,7 +368,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             return $this->$offset = $value;
         }
         if (in_array($offset, $this->TFields)) {
-            return $this->{$this->Properties[ array_search($offset, $this->TFields) ]} = $value;
+            return $this->{$this->Properties[array_search($offset, $this->TFields)]} = $value;
         }
 
         return false;
@@ -408,5 +417,17 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         }
 
         return null;
+    }
+
+    public static function clearCache($model=null)
+    {
+        if (is_null($model)){
+            self::$runtimeCache = [];
+            return;
+        }
+        if (isset(self::$runtimeCache[$model])){
+            unset(self::$runtimeCache[$model]);
+        }
+        return;
     }
 }
