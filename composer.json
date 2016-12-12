@@ -1,12 +1,17 @@
 {
   "name": "sanovskiy/simple-object",
-  "description": "Simple MySQL ORM",
-  "version": "2.4.4",
+  "version": "3.0.1",
+  "description": "Simple ORM",
+  "type": "library",
   "keywords": [
     "ORM"
   ],
-  "type": "library",
   "license": "Apache-2.0",
+  "require": {
+    "php": ">=5.4.0",
+    "gossi/php-code-generator": "^0.4.1",
+    "symfony/console": "^3.2"
+  },
   "authors": [
     {
       "name": "Pavel Terentyev",
@@ -21,11 +26,8 @@
     }
   ],
   "autoload": {
-    "files": ["lib/bootstrap.php"]
-  },
-  "require": {
-    "php": ">=5.4.0",
-    "sanovskiy/simple-console": "*",
-    "gossi/php-code-generator": "~0"
+    "psr-4": {
+      "sanovskiy\\SimpleObject\\": "src"
+    }
   }
 }
