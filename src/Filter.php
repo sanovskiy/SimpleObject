@@ -1,6 +1,6 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@
  */
 
 /**
- * SimpleObject Filters class
- *
- * @method SimpleObject_Filter eq() eq(string $field, mixed $value)
- * @method SimpleObject_Filter gt() gt(string $field, mixed $value)
- * @method SimpleObject_Filter lt() lt(string $field, mixed $value)
- * @method SimpleObject_Filter gteq() gteq(string $field, mixed $value)
- * @method SimpleObject_Filter lteq() lteq(string $field, mixed $value)
- * @method SimpleObject_Filter neq() neq(string $field, mixed $value)
- * @method SimpleObject_Filter not() not(string $field, mixed $value)
- * @method SimpleObject_Filter isnull() isnull(string $field)
- * @method SimpleObject_Filter isnotnull() isnotnull(string $field)
- * @method SimpleObject_Filter in() in(string $field, mixed $value)
- * @method SimpleObject_Filter notin() notin(string $field, mixed $value)
- * @method SimpleObject_Filter like() like(string $field, mixed $value)
- * @method SimpleObject_Filter like_in() like_in(string $field, mixed $value)
- * @method SimpleObject_Filter notlike() notlike(string $field, mixed $value)
+ * Filters class
+ * @package sanovskiy\SimpleObject
+ * @method Filter eq() eq(string $field, mixed $value)
+ * @method Filter gt() gt(string $field, mixed $value)
+ * @method Filter lt() lt(string $field, mixed $value)
+ * @method Filter gteq() gteq(string $field, mixed $value)
+ * @method Filter lteq() lteq(string $field, mixed $value)
+ * @method Filter neq() neq(string $field, mixed $value)
+ * @method Filter not() not(string $field, mixed $value)
+ * @method Filter isnull() isnull(string $field)
+ * @method Filter isnotnull() isnotnull(string $field)
+ * @method Filter in() in(string $field, mixed $value)
+ * @method Filter notin() notin(string $field, mixed $value)
+ * @method Filter like() like(string $field, mixed $value)
+ * @method Filter like_in() like_in(string $field, mixed $value)
+ * @method Filter notlike() notlike(string $field, mixed $value)
  */
-class SimpleObject_Filter implements Iterator
+class Filter implements \Iterator
 {
 
     protected $_entries = [];
@@ -59,7 +59,7 @@ class SimpleObject_Filter implements Iterator
     /**
      * @param $name
      * @param $_
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function __call($name, $_)
     {
@@ -127,7 +127,7 @@ class SimpleObject_Filter implements Iterator
      * @param string $field
      * @param string $value
      * @param string $cmp
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function addfilter($field, $value, $cmp = "=")
     {
@@ -138,7 +138,7 @@ class SimpleObject_Filter implements Iterator
 
     /**
      * @param boolean $or_instead_and
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function orQuery($or_instead_and)
     {
@@ -278,11 +278,12 @@ class SimpleObject_Filter implements Iterator
         }
         $this->sql = $select . $whereStr . $orderStr . $limit . $offset;
         $this->bind = $bind;
+        return $this->sql;
     }
 
     /**
      * @param bool $idOnly
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function setIdOnly($idOnly = true)
     {
@@ -294,7 +295,7 @@ class SimpleObject_Filter implements Iterator
     /**
      * @param $page
      * @param $limitOnPage
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function page($page, $limitOnPage)
     {
@@ -307,7 +308,7 @@ class SimpleObject_Filter implements Iterator
 
     /**
      * @param bool $distinct
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function distinct($distinct = false)
     {
@@ -319,7 +320,7 @@ class SimpleObject_Filter implements Iterator
     /**
      * @param string $field
      * @param string $direction
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function order($field = 'id', $direction = 'ASC')
     {
@@ -331,7 +332,7 @@ class SimpleObject_Filter implements Iterator
     /**
      * @param $limit
      * @param int $offset
-     * @return SimpleObject_Filter
+     * @return Filter
      */
     public function limit($limit, $offset = 0)
     {

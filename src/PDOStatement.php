@@ -1,6 +1,6 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,19 +19,19 @@
 /**
  * Class SimpleObject_PDOStatement
  */
-class SimpleObject_PDOStatement extends PDOStatement
+class PDOStatement extends \PDOStatement
 {
 
     /**
-     * @var SimpleObject_PDO
+     * @var \sanovskiy\SimpleObject\PDO
      */
     protected $pdo;
 
     /**
      * SimpleObject_PDOStatement constructor.
-     * @param SimpleObject_PDO $pdo
+     * @param \sanovskiy\SimpleObject\PDO $pdo
      */
-    protected function __construct(SimpleObject_PDO $pdo)
+    protected function __construct(\sanovskiy\SimpleObject\PDO $pdo)
     {
         $this->pdo = $pdo;
     }

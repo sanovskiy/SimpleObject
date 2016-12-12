@@ -1,6 +1,6 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
  *
  */
 
-/** @noinspection PhpIncludeInspection */
-require __DIR__.DIRECTORY_SEPARATOR.'SimpleObject'.DIRECTORY_SEPARATOR.'Autoload.php';
-SimpleObject_Autoload::register();
+class Exception extends \Exception
+{
+
+}

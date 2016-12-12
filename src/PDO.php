@@ -1,6 +1,6 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
  */
 
 /**
- * Class SimpleObject_PDO
+ * Class \sanovskiy\SimpleObject\PDO
  */
-class SimpleObject_PDO extends PDO
+class PDO extends \PDO
 {
 
     protected $queries_count = 0;
@@ -28,7 +28,7 @@ class SimpleObject_PDO extends PDO
     protected $longest_query_time = 0;
 
     /**
-     * SimpleObject_PDO constructor.
+     * sanovskiy\SimpleObject\PDO constructor.
      * @param $dsn
      * @param string $username
      * @param string $password
@@ -37,7 +37,7 @@ class SimpleObject_PDO extends PDO
     public function __construct($dsn, $username = '', $password = '', $driver_options = array())
     {
         parent::__construct($dsn, $username, $password, $driver_options);
-        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('SimpleObject_PDOStatement', array($this)));
+        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('sanovskiy\SimpleObject\PDOStatement', array($this)));
     }
 
     /**
@@ -89,9 +89,9 @@ class SimpleObject_PDO extends PDO
      * @param string $statement
      * @param int $mode
      * @param null $arg3
-     * @return PDOStatement
+     * @return \PDOStatement
      */
-    public function query($statement, $mode = PDO::ATTR_DEFAULT_FETCH_MODE, $arg3 = null)
+    public function query($statement, $mode = \PDO::ATTR_DEFAULT_FETCH_MODE, $arg3 = null)
     {
         $start = $this->getMicro();
         $result = parent::query($statement, $mode, $arg3);

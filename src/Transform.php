@@ -1,6 +1,6 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,20 @@
  *
  */
 
-/**
- * Class SimpleObject_Transform
- */
-class SimpleObject_Transform {
-
+class Transform
+{
     public static function apply_transform($transform, $value)
     {
-        if (is_array($transform)){
-            foreach($transform as $rule){
-                $value = self::apply_transform($rule,$value);
+        if (is_array($transform)) {
+            foreach ($transform as $rule) {
+                $value = self::apply_transform($rule, $value);
             }
             return $value;
         }
         $params = explode("|", $transform);
         $func = $params[0];
-        if (method_exists(__CLASS__,$func)){
-            $value = call_user_func([__CLASS__, $func],$value,$params);
+        if (method_exists(__CLASS__, $func)) {
+            $value = call_user_func([__CLASS__, $func], $value, $params);
         }
         return $value;
     }
@@ -41,7 +38,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return mixed
      */
-    public static function urlCorrect($value) {
+    public static function urlCorrect($value)
+    {
         $value = preg_replace("/^https?\:\/\/?/", "", $value);
         //$value = preg_replace ( "/^www\./", "", $value );
         return $value;
@@ -51,7 +49,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return int|null
      */
-    public static function date2time($value) {
+    public static function date2time($value)
+    {
         if (empty($value)) {
             return null;
         }
@@ -63,7 +62,8 @@ class SimpleObject_Transform {
      * @param array $params
      * @return bool|null|string
      */
-    public static function time2date($value, $params = []) {
+    public static function time2date($value, $params = [])
+    {
         if (is_null($value)) {
             return null;
         }
@@ -86,7 +86,8 @@ class SimpleObject_Transform {
      * @param array $params
      * @return float
      */
-    public static function div($value, $params = array()) {
+    public static function div($value, $params = array())
+    {
         $divider = $params [1];
         if ($divider == 0) {
             return $value;
@@ -99,7 +100,8 @@ class SimpleObject_Transform {
      * @param array $params
      * @return mixed
      */
-    public static function mult($value, $params = array()) {
+    public static function mult($value, $params = array())
+    {
         $multiplier = $params [1];
         return ($value * $multiplier);
     }
@@ -108,7 +110,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return bool
      */
-    public static function pgbool2bool($value) {
+    public static function pgbool2bool($value)
+    {
         if ('t' == strtolower($value)) {
             return true;
         } else {
@@ -120,7 +123,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return string
      */
-    public static function bool2pgbool($value) {
+    public static function bool2pgbool($value)
+    {
         if ($value) {
             return 't';
         } else {
@@ -132,7 +136,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return bool
      */
-    public static function digit2boolean($value) {
+    public static function digit2boolean($value)
+    {
         if (0 >= $value) {
             return false;
         } else {
@@ -144,7 +149,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return string
      */
-    public static function digit2textboolean($value) {
+    public static function digit2textboolean($value)
+    {
         if (0 >= $value) {
             return 'false';
         } else {
@@ -156,7 +162,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return int
      */
-    public static function boolean2digit($value) {
+    public static function boolean2digit($value)
+    {
         if ($value) {
             return 1;
         } else {
@@ -168,7 +175,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return string
      */
-    public static function boolean2text($value) {
+    public static function boolean2text($value)
+    {
         if ($value) {
             return 'true';
         } else {
@@ -180,7 +188,8 @@ class SimpleObject_Transform {
      * @param $value
      * @return string
      */
-    public static function jsonize($value) {
+    public static function jsonize($value)
+    {
         return json_encode($value);
     }
 
@@ -188,8 +197,9 @@ class SimpleObject_Transform {
      * @param $value
      * @return mixed
      */
-    public static function unjsonize($value) {
-        return json_decode($value,true);
+    public static function unjsonize($value)
+    {
+        return json_decode($value, true);
     }
 
     /**
@@ -197,12 +207,13 @@ class SimpleObject_Transform {
      * @param $params
      * @return mixed
      */
-    public static function SOData($value, $params) {
+    public static function SOData($value, $params)
+    {
         $className = $params [1];
-        if (!class_exists($className) || is_subclass_of($className,'SimpleObject_Abstract')){
+        if (!class_exists($className) || !($className instanceof ActiveRecordAbstract)) {
             return $value;
         }
-        /* @var SimpleObject_Abstract $instance */
+        /* @var \sanovskiy\SimpleObject\ActiveRecordAbstract $instance */
         $instance = new $className($value);
         return $instance->__toArray();
     }
@@ -211,15 +222,17 @@ class SimpleObject_Transform {
      * @param $val
      * @return string
      */
-    public static function string($val) {
-        return (string) $val;
+    public static function string($val)
+    {
+        return (string)$val;
     }
 
     /**
      * @param $val
      * @return int
      */
-    public static function intVal($val) {
+    public static function intVal($val)
+    {
         return intval($val);
     }
 
@@ -228,7 +241,8 @@ class SimpleObject_Transform {
      * @param bool $firstCharUpper
      * @return mixed|string
      */
-    static public function CCName($string, $firstCharUpper = true) {
+    static public function CCName($string, $firstCharUpper = true)
+    {
         $s = strtolower($string);
         $s = str_replace('_', ' ', $s);
         $s = str_replace('-', ' ', $s);
@@ -238,8 +252,8 @@ class SimpleObject_Transform {
         if (!$firstCharUpper) {
             $s = strtolower(substr($s, 0, 1)) . substr($s, 1);
         }
-        if (preg_match('/^\d/',$s)){
-            $s = 'd'.$s;
+        if (preg_match('/^\d/', $s)) {
+            $s = 'd' . $s;
         }
         return $s;
     }

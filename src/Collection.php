@@ -1,6 +1,6 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
  *
  */
 
-/**
- * Class SimpleObject_Collection
- */
-class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
+use sanovskiy;
+
+class Collection implements \Iterator, \ArrayAccess, \Countable
 {
     const ERROR_LOCKED = 'Collection is locked. You can\'t modify elements list';
     const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
@@ -32,42 +31,42 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     protected $isUnlockable = true;
 
     /**
-     * @var SimpleObject_Filter
+     * @var sanovskiy\SimpleObject\Filter
      */
     protected $filters = null;
 
     /**
      * @param $model_name
-     * @param PDOStatement|SimpleObject_Filter|array $data
-     * @return SimpleObject_Collection
-     * @throws SimpleObject_Exception
+     * @param PDOStatement|sanovskiy\SimpleObject\Filter|array $data
+     * @return sanovskiy\SimpleObject\Collection
+     * @throws sanovskiy\SimpleObject\Exception
      */
     static function factory($model_name, $data=null)
     {
         if (!class_exists($model_name)) {
-            throw new SimpleObject_Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
+            throw new Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
         }
         $collection = new self;
         if ($data instanceof PDOStatement) {
             while ($row = $data->fetch()) {
-                /*  @var SimpleObject_Abstract $object */
+                /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
                 $object = new $model_name;
                 $object->load($row);
                 $collection->push($object);
             }
-        } elseif ($data instanceof SimpleObject_Filter || is_null($data)) {
-            /*  @var SimpleObject_Abstract $object */
+        } elseif ($data instanceof Filter || is_null($data)) {
+            /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
             $object = new $model_name;
             if (is_null($data)){
-                $data = SimpleObject_Filter::getNewInstance()->gt($object->getFields()[0],0);
+                $data = Filter::getNewInstance()->gt($object->getFields()[0],0);
             }
 
             /** @noinspection PhpUndefinedFieldInspection */
             $data->build(false, $object->DBTable, $object->IdField);
-            $stmt = SimpleObject::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
+            $stmt = Util::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
             if (!$stmt->execute($data->getBind())) {
                 $PDOError = $stmt->errorInfo();
-                throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
+                throw new Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
             }
             $collection = self::factory($model_name, $stmt);
             $collection->setFilters($data);
@@ -78,7 +77,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     /**
      * @param null $filters
      */
-    public function setFilters(SimpleObject_Filter $filters)
+    public function setFilters(Filter $filters)
     {
         $this->filters = $filters;
     }
@@ -109,7 +108,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     /**
      *
      * @param boolean $disallowUnlock
-     * @return \SimpleObject_Collection
+     * @return Collection
      */
     public function lock($disallowUnlock = false)
     {
@@ -122,7 +121,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 
     /**
      *
-     * @return \SimpleObject_Collection
+     * @return Collection
      * @throws Exception
      */
     public function unlock()
@@ -137,7 +136,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     /**
      * Sets class name for an empty collection
      * @param string $name
-     * @return boolean|\SimpleObject_Collection
+     * @return boolean|Collection
      * @throws Exception
      */
     public function setClassName($name)
@@ -338,15 +337,15 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     /**
      * @param $property string
      * @param $value mixed
-     * @return SimpleObject_Collection
-     * @throws SimpleObject_Exception
+     * @return Collection
+     * @throws Exception
      */
     public function getElementsByPropertyValue($property, $value)
     {
         $elements = new self;
         for ($index = 0; $index < count($this->records); $index++) {
             if (!property_exists($this->records[$index], $property)) {
-                throw new SimpleObject_Exception('Objects in current set does not have property ' . $property);
+                throw new Exception('Objects in current set does not have property ' . $property);
             }
             if ($this->records[$index]->{$property} == $value) {
                 $elements->push($this->records[$index]);
@@ -358,15 +357,15 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
     /**
      * @param $method string
      * @param $value mixed
-     * @return SimpleObject_Collection
-     * @throws SimpleObject_Exception
+     * @return Collection
+     * @throws Exception
      */
     public function getElementsByFunctionResult($method, $value)
     {
         $elements = new self;
         for ($index = 0; $index < count($this->records); $index++) {
             if (!method_exists($this->records[$index], $method)) {
-                throw new SimpleObject_Exception('Objects in current set does not have method ' . $method);
+                throw new Exception('Objects in current set does not have method ' . $method);
             }
             if ($this->records[$index]->{$method}() == $value) {
                 $elements->push($this->records[$index]);
@@ -406,7 +405,7 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
 
     /**
      * @return bool|int
-     * @throws SimpleObject_Exception
+     * @throws Exception
      */
     public function getTotalPagedCount()
     {
@@ -416,10 +415,10 @@ class SimpleObject_Collection implements Iterator, ArrayAccess, Countable
         $object = new $this->className;
         /** @noinspection PhpUndefinedFieldInspection */
         $this->filters->build(true, $object->DBTable, $object->IdField);
-        $stmt = SimpleObject::getConnection($object->SimpleObjectConfigNameRead)->prepare($this->filters->getSQL());
+        $stmt = Util::getConnection($object->SimpleObjectConfigNameRead)->prepare($this->filters->getSQL());
         if (!$stmt->execute($this->filters->getBind())) {
             $PDOError = $stmt->errorInfo();
-            throw new SimpleObject_Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
+            throw new Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
         }
 
         return intval($stmt->fetchColumn());

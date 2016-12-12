@@ -1,7 +1,7 @@
-<?php
+<?php namespace sanovskiy\SimpleObject;
 
 /**
- * Copyright 2010-2016 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,26 +17,29 @@
  *
  */
 
+//use sanovskiy;
+
 /**
- * Class SimpleObject_Abstract
+ * Class ActiveRecordAbstract
+ * @package sanovskiy\SimpleObject
  * @property string $DBTable
  * @property string $SimpleObjectConfigNameRead
  * @property string $SimpleObjectConfigNameWrite
  * @property array $field2PropertyTransform
  * @property array $property2FieldTransform
  */
-abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
+abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
 {
     protected $SimpleObjectConfigNameRead = 'default';
     protected $SimpleObjectConfigNameWrite = 'default';
 
     /**
-     * @var SimpleObject_PDO
+     * @var \sanovskiy\SimpleObject\PDO
      */
     protected $DBConWrite;
 
     /**
-     * @var SimpleObject_PDO
+     * @var \sanovskiy\SimpleObject\PDO
      */
     protected $DBConRead;
 
@@ -86,14 +89,14 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
     public $notExistInStorage = true;
 
     /**
-     * SimpleObject_Abstract constructor.
+     * sanovskiy\SimpleObject\ActiveRecordAbstract constructor.
      * @param int|null $id
      */
     function __construct($id = null)
     {
         $this->init();
-        $this->DBConRead = SimpleObject::getConnection($this->SimpleObjectConfigNameRead);
-        $this->DBConWrite = SimpleObject::getConnection($this->SimpleObjectConfigNameWrite);
+        $this->DBConRead = Util::getConnection($this->SimpleObjectConfigNameRead);
+        $this->DBConWrite = Util::getConnection($this->SimpleObjectConfigNameWrite);
         if (is_null($id)) {
             $this->Id = null;
 
@@ -155,7 +158,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
                 isset($this->field2PropertyTransform [$PropertyId]) &&
                 !is_null($this->field2PropertyTransform [$PropertyId])
             ) {
-                $this->$PropertyName = SimpleObject_Transform::apply_transform($this->field2PropertyTransform [$PropertyId], $value);
+                $this->$PropertyName = Transform::apply_transform($this->field2PropertyTransform [$PropertyId], $value);
             } else {
                 $this->$PropertyName = $value;
             }
@@ -194,6 +197,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $this->Id = $this->DBConWrite->lastInsertId($this->DBTable);
             if ($this->Id) {
                 $this->notExistInStorage = false;
+                $success = true;
             }
         } else {
             $sql = 'UPDATE `' . $this->DBTable . '` SET ';
@@ -271,7 +275,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
             $key = $useFieldNames ? $this->TFields[$index] : $property;
             $value = $this->$property;
             if ($applyTransform && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
-                $value = SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $value);
+                $value = Transform::apply_transform($this->property2FieldTransform[$index], $value);
             }
             $result[$key] = $value;
         }
@@ -353,7 +357,7 @@ abstract class SimpleObject_Abstract implements Iterator, ArrayAccess, Countable
         if (in_array($offset, $this->Properties)) {
             $index = array_search($offset, $this->Properties);
             if (isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
-                return SimpleObject_Transform::apply_transform($this->property2FieldTransform[$index], $this->{$offset});
+                return Transform::apply_transform($this->property2FieldTransform[$index], $this->{$offset});
             }
 
             return $this->{$offset};
