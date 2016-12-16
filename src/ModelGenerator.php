@@ -280,10 +280,10 @@ BASEMODEL;
         $baseModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Base';
         $finalModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Logic';
         if (!file_exists($baseModelsDir)) {
-            mkdir($baseModelsDir, null, true);
+            mkdir($baseModelsDir, 0755, true);
         }
         if (!file_exists($finalModelsDir)) {
-            mkdir($finalModelsDir, null, true);
+            mkdir($finalModelsDir, 0755, true);
         }
 
         $this->output->write(['<info>Removing all base models</info>']);
