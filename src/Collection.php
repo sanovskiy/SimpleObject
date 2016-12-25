@@ -1,4 +1,5 @@
 <?php namespace sanovskiy\SimpleObject;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -41,7 +42,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return sanovskiy\SimpleObject\Collection
      * @throws sanovskiy\SimpleObject\Exception
      */
-    static function factory($model_name, $data=null)
+    static function factory($model_name, $data = null)
     {
         if (!class_exists($model_name)) {
             throw new Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
@@ -57,8 +58,8 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         } elseif ($data instanceof Filter || is_null($data)) {
             /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
             $object = new $model_name;
-            if (is_null($data)){
-                $data = Filter::getNewInstance()->gt($object->getFields()[0],0);
+            if (is_null($data)) {
+                $data = Filter::getNewInstance()->gt($object->getFields()[0], 0);
             }
 
             /** @noinspection PhpUndefinedFieldInspection */
@@ -319,14 +320,22 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     * @param $property
+     * @param string|array $property
      * @return array
      */
     public function getFromEach($property)
     {
         $values = [];
         foreach ($this->records as $index => $element) {
-            $values[$index] = $element->{$property};
+            if (!is_array($property)) {
+                $values[$index] = $element->{$property};
+            } else {
+                $_ = [];
+                foreach ($property as $prop) {
+                    $_[$prop] = $element->{$prop};
+                }
+                $values[$index] = $_;
+            }
         }
         //for ($index = 0; $index < count($this->records); $index++) {
         //    $values[$index] = $this->records[$index]->{$property};
@@ -385,8 +394,8 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     function __get($name)
     {
         $object = new $this->className;
-        if (in_array($name,$object->Properties)){
-            return implode(' ',$this->getFromEach($name));
+        if (in_array($name, $object->Properties)) {
+            return implode(' ', $this->getFromEach($name));
         }
         return null;
     }
@@ -395,12 +404,12 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     //<editor-fold desc="Paging">
     public function getPage()
     {
-        if (!$this->filters->isPaged()){
+        if (!$this->filters->isPaged()) {
             return false;
         }
         $offset = $this->filters->getOffset();
         $limit = $this->filters->getLimit();
-        return ($offset/$limit) + 1;
+        return ($offset / $limit) + 1;
     }
 
     /**
@@ -409,7 +418,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      */
     public function getTotalPagedCount()
     {
-        if (!$this->filters->isPaged()){
+        if (!$this->filters->isPaged()) {
             return false;
         }
         $object = new $this->className;
@@ -426,7 +435,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     public function getRecordsCountOnPage()
     {
-        if (!$this->filters->isPaged()){
+        if (!$this->filters->isPaged()) {
             return false;
         }
         return $this->filters->getLimit();
