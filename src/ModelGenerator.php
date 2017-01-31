@@ -52,7 +52,7 @@ class ModelGenerator
                 throw new Exception('Ignoring connection ' . $this->configName . ' marked as read_correction');
             }
             $dbSettings = Util::getSettingsValue('dbcon', $this->configName);
-            $this->output->write(['Reverse engineering database ' . $dbSettings['database'],]);
+            $this->output->write(['Reverse engineering database ' . $dbSettings['database'].PHP_EOL]);
 
             $this->prepareDirs();
 
@@ -66,7 +66,7 @@ class ModelGenerator
             $tables = $stmt->fetchAll(PDO::FETCH_NUM);
             $generator = new CodeGenerator();
 
-            $this->output->write(['Generating files:']);
+            $this->output->write(['Generating files:'.PHP_EOL]);
             foreach ($tables as $tableRow) {
                 $tableName = $tableRow[0];
                 $this->output->write('Table ' . $tableName . '... ', false);
@@ -219,12 +219,12 @@ class ModelGenerator
                 }
                 $BaseCode = $this->getBaseModelHeader() . $generator->generate($BaseModel);
                 $this->writeModel($tableInfo['file_name'], $BaseCode, true);
-                $this->output->write('Base');
+                $this->output->write('Base'.PHP_EOL);
             }
-            $this->output->write('<info>All done.</info>');
+            $this->output->write('<info>All done.</info>'.PHP_EOL);
 
         } catch (\Exception $e) {
-            $this->output->write(['<error>' . $e->getMessage() . '</error>']);
+            $this->output->write(['<error>' . $e->getMessage() . '</error>'.PHP_EOL]);
         }
     }
 
@@ -286,7 +286,7 @@ BASEMODEL;
             mkdir($finalModelsDir, 0755, true);
         }
 
-        $this->output->write(['<info>Removing all base models</info>']);
+        $this->output->write(['<info>Removing all base models</info>'.PHP_EOL]);
 
         $dir = opendir($baseModelsDir);
         while ($file = readdir($dir)) {

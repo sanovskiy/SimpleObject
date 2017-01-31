@@ -256,6 +256,11 @@ class Filter implements \Iterator
                         $order[] = '`' . $filter["key"] . '` ' . ($filter["value"] == 'DESC' ? 'DESC' : 'ASC');
                     }
                     break;
+                case '{ORDEREXPR}':
+                    if (!$countQuery) {
+                        $order[] = $filter["key"] . ' ' . ($filter["value"] == 'DESC' ? 'DESC' : 'ASC');
+                    }
+                    break;
                 case "{LIMIT}":
                     if (!$countQuery) {
                         $limit = ' LIMIT ' . strtoupper($filter["key"]);
@@ -325,6 +330,18 @@ class Filter implements \Iterator
     public function order($field = 'id', $direction = 'ASC')
     {
         $this->addfilter($field, $direction, '{order}');
+
+        return $this;
+    }
+
+    /**
+     * @param string $field
+     * @param string $direction
+     * @return Filter
+     */
+    public function orderExpresstion($expression, $direction = 'ASC')
+    {
+        $this->addfilter($expression, $direction, '{orderexpr}');
 
         return $this;
     }
