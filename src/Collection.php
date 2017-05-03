@@ -48,6 +48,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
             throw new Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
         }
         $collection = new self;
+        $collection->setClassName($model_name);
         if ($data instanceof PDOStatement) {
             while ($row = $data->fetch()) {
                 /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
