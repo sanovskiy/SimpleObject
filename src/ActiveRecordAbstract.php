@@ -434,4 +434,10 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         }
         return;
     }
+
+    public static function getClassName()
+    {
+        return get_called_class();
+    }
+
 }
