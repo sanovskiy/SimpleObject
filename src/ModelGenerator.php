@@ -52,7 +52,7 @@ class ModelGenerator
                 throw new Exception('Ignoring connection ' . $this->configName . ' marked as read_correction');
             }
             $dbSettings = Util::getSettingsValue('dbcon', $this->configName);
-            $this->output->write(['Reverse engineering database ' . $dbSettings['database'].PHP_EOL]);
+            $this->output->write(['Reverse engineering database ' . $dbSettings['database'] . PHP_EOL]);
 
             $this->prepareDirs();
 
@@ -66,7 +66,7 @@ class ModelGenerator
             $tables = $stmt->fetchAll(PDO::FETCH_NUM);
             $generator = new CodeGenerator();
 
-            $this->output->write(['Generating files:'.PHP_EOL]);
+            $this->output->write(['Generating files:' . PHP_EOL]);
             foreach ($tables as $tableRow) {
                 $tableName = $tableRow[0];
                 $this->output->write('Table ' . $tableName . '... ', false);
@@ -76,8 +76,8 @@ class ModelGenerator
                 $tableInfo = [
                     'table_name' => $tableName,
                     'file_name' => $CCName . '.php',
-                    'class_namespace' => Util::getSettingsValue('models_namespace',$this->configName) . 'Logic',
-                    'base_class_namespace' => Util::getSettingsValue('models_namespace',$this->configName) . 'Base',
+                    'class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
+                    'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
                     'class_name' => $CCName,
                     'fields' => []
                 ];
@@ -88,8 +88,7 @@ class ModelGenerator
                     ->setUseStatements(['Base_' . $tableInfo['class_name'] => $tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name']])
                     ->setName($tableInfo['class_name'])
                     ->setParentClassName('Base_' . $tableInfo['class_name'])
-                    ->setDescription('LogicModel class for '.$tableInfo['table_name'])
-                ;
+                    ->setDescription('LogicModel class for ' . $tableInfo['table_name']);
 
                 $LogicCode = $this->getLogicModelHeader() . $generator->generate($LogicModel);
                 $this->writeModel($tableInfo['file_name'], $LogicCode, false);
@@ -149,7 +148,9 @@ class ModelGenerator
                 foreach ($fields as $num => $_row) {
                     $TFields[$num] = $_row['COLUMN_NAME'];
                     $Properties[$num] = Transform::CCName($_row['COLUMN_NAME']);
-
+                    if ($_row['COLUMN_TYPE'] == 'int(1)') {
+                        $_row['DATA_TYPE'] = 'tinyint';
+                    }
                     switch ($_row['DATA_TYPE']) {
                         case 'timestamp':
                         case 'date':
@@ -164,12 +165,6 @@ class ModelGenerator
                             $colVal[$num] = 'boolean';
                             break;
                         case 'int':
-                            if ($_row['CHARACTER_MAXIMUM_LENGTH']==1){
-                                $field2PropertyTransform[$num][] = 'digit2boolean';
-                                $property2FieldTransform[$num][] = 'boolean2digit';
-                                $colVal[$num] = 'boolean';
-                                break;
-                            }
                             $colVal[$num] = 'integer';
                             break;
                         case 'enum':
@@ -225,12 +220,12 @@ class ModelGenerator
                 }
                 $BaseCode = $this->getBaseModelHeader() . $generator->generate($BaseModel);
                 $this->writeModel($tableInfo['file_name'], $BaseCode, true);
-                $this->output->write('Base'.PHP_EOL);
+                $this->output->write('Base' . PHP_EOL);
             }
-            $this->output->write('<info>All done.</info>'.PHP_EOL);
+            $this->output->write('<info>All done.</info>' . PHP_EOL);
 
         } catch (\Exception $e) {
-            $this->output->write(['<error>' . $e->getMessage() . '</error>'.PHP_EOL]);
+            $this->output->write(['<error>' . $e->getMessage() . '</error>' . PHP_EOL]);
         }
     }
 
@@ -292,7 +287,7 @@ BASEMODEL;
             mkdir($finalModelsDir, 0755, true);
         }
 
-        $this->output->write(['<info>Removing all base models</info>'.PHP_EOL]);
+        $this->output->write(['<info>Removing all base models</info>' . PHP_EOL]);
 
         $dir = opendir($baseModelsDir);
         while ($file = readdir($dir)) {
