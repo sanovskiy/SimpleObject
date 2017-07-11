@@ -164,6 +164,12 @@ class ModelGenerator
                             $colVal[$num] = 'boolean';
                             break;
                         case 'int':
+                            if ($_row['CHARACTER_MAXIMUM_LENGTH']==1){
+                                $field2PropertyTransform[$num][] = 'digit2boolean';
+                                $property2FieldTransform[$num][] = 'boolean2digit';
+                                $colVal[$num] = 'boolean';
+                                break;
+                            }
                             $colVal[$num] = 'integer';
                             break;
                         case 'enum':
