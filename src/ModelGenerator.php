@@ -125,6 +125,7 @@ class ModelGenerator
                     PhpProperty::create('DBTable')
                         ->setValue($tableInfo['table_name'])
                         ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
+                        ->setStatic(true)
                 );
 
                 $TFields = [];
