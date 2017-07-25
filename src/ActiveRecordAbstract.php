@@ -46,7 +46,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     /**
      * @var string
      */
-    protected $DBTable = '';
+    protected static $DBTable = '';
 
     /**
      * @var string
@@ -135,7 +135,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
                 $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
             } else {
                 $sql = 'SELECT `' . implode('`,`',
-                        $this->TFields) . '` FROM `' . $this->DBTable . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
+                        $this->TFields) . '` FROM `' . self::getTableName() . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
                 $stmt = $this->DBConRead->prepare($sql);
                 $stmt->execute([':id' => $this->{$this->Properties[0]}]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -186,21 +186,21 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         }
         if ($this->notExistInStorage) {
             $bind[':id'] = null;
-            $sql = 'INSERT INTO `' . $this->DBTable . '` (`' . implode('`,`',
+            $sql = 'INSERT INTO `' . self::getTableName() . '` (`' . implode('`,`',
                     $this->TFields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
             $stmt = $this->DBConWrite->prepare($sql);
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {
                 $error = $stmt->errorInfo();
-                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . $this->DBTable, $error[0]);
+                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), $error[0]);
             }
-            $this->Id = $this->DBConWrite->lastInsertId($this->DBTable);
+            $this->Id = $this->DBConWrite->lastInsertId(self::getTableName());
             if ($this->Id) {
                 $this->notExistInStorage = false;
                 $success = true;
             }
         } else {
-            $sql = 'UPDATE `' . $this->DBTable . '` SET ';
+            $sql = 'UPDATE `' . self::getTableName() . '` SET ';
             $sets = [];
             foreach ($this->TFields as $key => $field) {
                 if ($key == 0) {
@@ -214,7 +214,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {
                 $error = $stmt->errorInfo();
-                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . $this->DBTable, $error[0]);
+                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), $error[0]);
             }
         }
         $class = get_class($this);
@@ -256,7 +256,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
     public function delete()
     {
-        $sql = 'DELETE FROM ' . $this->DBTable . ' WHERE ' . $this->TFields[0] . '=' . ':id';
+        $sql = 'DELETE FROM ' . self::getTableName() . ' WHERE ' . $this->TFields[0] . '=' . ':id';
         $stmt = $this->DBConWrite->prepare($sql);
 
         return $stmt->execute([':id' => $this->Id]);
@@ -403,7 +403,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
             case 'noElement':
                 return $this->notExistInStorage;
             case 'DBTable':
-                return $this->DBTable;
+                return self::getTableName();
             case 'TFields':
                 return $this->TFields;
             case 'Properties':
@@ -423,6 +423,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return null;
     }
 
+
     public static function clearCache($model=null)
     {
         if (is_null($model)){
@@ -438,6 +439,11 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     public static function getClassName()
     {
         return get_called_class();
+    }
+
+    public static function getTableName()
+    {
+        return static::$DBTable;
     }
 
 }

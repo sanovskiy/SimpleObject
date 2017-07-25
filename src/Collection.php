@@ -60,11 +60,11 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
             /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
             $object = new $model_name;
             if (is_null($data)) {
-                $data = Filter::getNewInstance()->gt($object->getFields()[0], 0);
+                $data = Filter::getNewInstance()/*->gt($object->getFields()[0], 0)*/;
             }
 
             /** @noinspection PhpUndefinedFieldInspection */
-            $data->build(false, $object->DBTable, $object->IdField);
+            $data->build(false, $model_name::getTableName(), $object->IdField);
             $stmt = Util::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
             if (!$stmt->execute($data->getBind())) {
                 $PDOError = $stmt->errorInfo();
