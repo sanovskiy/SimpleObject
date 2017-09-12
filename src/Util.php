@@ -36,7 +36,7 @@ class Util
             'user' => 'root',
             'password' => '',
             'database' => 'simpleobject',
-            'charset' => 'utf8'
+            'charset' => null
         ],
         'path_models' => '',
         'models_namespace' => 'sanovsliy\\SimpleObject\\models\\default\\',
@@ -91,10 +91,10 @@ class Util
         if (!isset(self::$connections[$configName]) || is_null(self::$connections[$configName])) {
             $dbSettings = self::getSettingsValue('dbcon', $configName);
             $connectString = 'mysql:host=' . $dbSettings['host'] . ';';
-            if(isset($dbSettings['socket'])){
+            if (isset($dbSettings['socket'])) {
                 $connectString = 'mysql:unix_socket=' . $dbSettings['socket'] . ';';
             }
-            $connectString = $connectString.'dbname=' . $dbSettings['database'] . ';charset=' . $dbSettings['charset'];
+            $connectString = $connectString . 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');
             self::$connections[$configName] = new PDO($connectString, $dbSettings['user'], $dbSettings['password']);
         }
 
@@ -127,7 +127,7 @@ class Util
         }
 
         foreach (self::$settings as $_configName => $_config) {
-            $generator = new ModelGenerator($_configName,$_config);
+            $generator = new ModelGenerator($_configName, $_config);
             $generator->run();
         }
     }
