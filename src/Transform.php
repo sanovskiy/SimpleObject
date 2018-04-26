@@ -67,6 +67,9 @@ class Transform
         if (is_null($value)) {
             return null;
         }
+        if (!is_array($params)){
+            $params = [$params];
+        }
         if (!isset($params[1])) {
             $format = 'Y-m-d H:i:s';
         } else {
@@ -112,11 +115,7 @@ class Transform
      */
     public static function pgbool2bool($value)
     {
-        if ('t' == strtolower($value)) {
-            return true;
-        } else {
-            return false;
-        }
+        return 't' === strtolower($value);
     }
 
     /**
@@ -125,11 +124,7 @@ class Transform
      */
     public static function bool2pgbool($value)
     {
-        if ($value) {
-            return 't';
-        } else {
-            return 'f';
-        }
+        return $value?'t':'f';
     }
 
     /**
@@ -138,11 +133,7 @@ class Transform
      */
     public static function digit2boolean($value)
     {
-        if (0 >= $value) {
-            return false;
-        } else {
-            return true;
-        }
+        return !(0 >= $value);
     }
 
     /**
@@ -151,11 +142,7 @@ class Transform
      */
     public static function digit2textboolean($value)
     {
-        if (0 >= $value) {
-            return 'false';
-        } else {
-            return 'true';
-        }
+        return (0 >= $value)?'false':'true';
     }
 
     /**
@@ -164,11 +151,7 @@ class Transform
      */
     public static function boolean2digit($value)
     {
-        if ($value) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return $value?1:0;
     }
 
     /**
@@ -177,11 +160,7 @@ class Transform
      */
     public static function boolean2text($value)
     {
-        if ($value) {
-            return 'true';
-        } else {
-            return 'false';
-        }
+        return $value?'true':'false';
     }
 
     /**
@@ -233,7 +212,7 @@ class Transform
      */
     public static function intVal($val)
     {
-        return intval($val);
+        return (int)$val;
     }
 
     /**
@@ -244,9 +223,7 @@ class Transform
     static public function CCName($string, $firstCharUpper = true)
     {
         $s = strtolower($string);
-        $s = str_replace('_', ' ', $s);
-        $s = str_replace('-', ' ', $s);
-        $s = str_replace('/', '_', $s);
+        $s = str_replace(array('_', '-', '/'), array(' ', ' ', '_'), $s);
         $s = ucwords($s);
         $s = str_replace(' ', '', $s);
         if (!$firstCharUpper) {
