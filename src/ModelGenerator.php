@@ -48,7 +48,7 @@ class ModelGenerator
     public function run()
     {
         try {
-            if (is_null(Util::getSettingsValue('read_connection', $this->configName)) && !is_null(Util::getSettingsValue('write_connection', $this->configName))) {
+            if (null === Util::getSettingsValue('read_connection', $this->configName) && null !== Util::getSettingsValue('write_connection', $this->configName)) {
                 throw new Exception('Ignoring connection ' . $this->configName . ' marked as read_correction');
             }
             $dbSettings = Util::getSettingsValue('dbcon', $this->configName);
@@ -107,7 +107,7 @@ class ModelGenerator
                 $writeConfigName = $this->configName;
                 $readConfigName = Util::getSettingsValue('read_connection', $this->configName);
 
-                if (is_null($readConfigName)) {
+                if (null === $readConfigName) {
                     $readConfigName = $this->configName;
                 }
 
@@ -282,10 +282,14 @@ BASEMODEL;
         $baseModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Base';
         $finalModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Logic';
         if (!file_exists($baseModelsDir)) {
-            mkdir($baseModelsDir, 0755, true);
+            if (!mkdir($baseModelsDir, 0755, true) && !is_dir($baseModelsDir)) {
+                throw new \RuntimeException(sprintf('Directory "%s" was not created', $baseModelsDir));
+            }
         }
         if (!file_exists($finalModelsDir)) {
-            mkdir($finalModelsDir, 0755, true);
+            if (!mkdir($finalModelsDir, 0755, true) && !is_dir($finalModelsDir)) {
+                throw new \RuntimeException(sprintf('Directory "%s" was not created', $finalModelsDir));
+            }
         }
 
         $this->output->write(['<info>Removing all base models</info>' . PHP_EOL]);

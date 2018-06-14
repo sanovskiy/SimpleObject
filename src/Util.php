@@ -32,6 +32,7 @@ class Util
      */
     static private $default_settings = [
         'dbcon' => [
+            'driver' => 'mysql',
             'host' => 'localhost',
             'user' => 'root',
             'password' => '',
@@ -88,14 +89,14 @@ class Util
      */
     public static function getConnection($configName = 'default')
     {
-        if (!isset(self::$connections[$configName]) || is_null(self::$connections[$configName])) {
+        if (!isset(self::$connections[$configName]) || null === self::$connections[$configName]) {
             $dbSettings = self::getSettingsValue('dbcon', $configName);
-            $connectString = 'mysql:host=' . $dbSettings['host'] . ';';
+            $dsn = $dbSettings['driver'].':host=' . $dbSettings['host'] . ';';
             if (isset($dbSettings['socket'])) {
-                $connectString = 'mysql:unix_socket=' . $dbSettings['socket'] . ';';
+                $dsn = $dbSettings['driver'].':unix_socket=' . $dbSettings['socket'] . ';';
             }
-            $connectString = $connectString . 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');
-            self::$connections[$configName] = new PDO($connectString, $dbSettings['user'], $dbSettings['password']);
+            $dsn = $dsn . 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');
+            self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
         }
 
         return self::$connections[$configName];
@@ -122,12 +123,12 @@ class Util
      */
     public static function reverseEngineerModels()
     {
-        if ("cli" != php_sapi_name()) {
+        if ("cli" !== php_sapi_name()) {
             throw new Exception('You can call this method only in CLI');
         }
 
         foreach (self::$settings as $_configName => $_config) {
-            $generator = new ModelGenerator($_configName, $_config);
+            $generator = new ModelGenerator($_configName);
             $generator->run();
         }
     }
