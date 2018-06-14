@@ -9,9 +9,8 @@
   "license": "Apache-2.0",
   "require": {
     "php": ">=5.4.0",
-    "ext-pdo_mysql": "*",
     "gossi/php-code-generator": "~0.4.1",
-    "symfony/console": "^3.2"
+    "symfony/console": "^4.0"
   },
   "authors": [
     {
