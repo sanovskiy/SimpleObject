@@ -223,17 +223,17 @@ class Filter implements \Iterator
                 case ">":
                 case "<=":
                 case ">=":
-                    $where[] = '`' . $filter["key"] . '`' . $filter["cmp"] . $bind_index;
+                    $where[] =  $filter["key"] . ' ' . $filter["cmp"] . $bind_index;
                     $bind[ $bind_index ] = $filter['value'];
                     break;
                 case "LIKE":
                 case "NOT LIKE":
-                    $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"] . ' ' . $bind_index;
+                    $where[] = ' ' . $filter["key"] . ' ' . $filter["cmp"] . ' ' . $bind_index;
                     $bind[ $bind_index ] = $filter['value'];
                     break;
                 case "IS NULL":
                 case "IS NOT NULL":
-                    $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"];
+                    $where[] = $filter["key"] . ' ' . $filter["cmp"];
                     break;
                 case "IN":
                 case "NOT IN":
@@ -244,16 +244,16 @@ class Filter implements \Iterator
                             $subindexes[] = $subindex;
                             $bind[ $subindex ] = $value;
                         }
-                        $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"] . ' (' . implode(',',
+                        $where[] = $filter["key"] . ' ' . $filter["cmp"] . ' (' . implode(',',
                                 $subindexes) . ')';
                     } else {
-                        $where[] = '`' . $filter["key"] . '` ' . $filter["cmp"] . ' (' . $bind_index . ')';
+                        $where[] = $filter["key"] . ' ' . $filter["cmp"] . ' (' . $bind_index . ')';
                         $bind[ $bind_index ] = $filter['value'];
                     }
                     break;
                 case '{ORDER}':
                     if (!$countQuery) {
-                        $order[] = '`' . $filter["key"] . '` ' . ($filter["value"] == 'DESC' ? 'DESC' : 'ASC');
+                        $order[] = $filter["key"] . ' ' . ($filter["value"] == 'DESC' ? 'DESC' : 'ASC');
                     }
                     break;
                 case '{ORDEREXPR}':

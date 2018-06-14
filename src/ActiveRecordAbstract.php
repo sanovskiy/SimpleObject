@@ -134,8 +134,8 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
             ) {
                 $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
             } else {
-                $sql = 'SELECT `' . implode('`,`',
-                        $this->TFields) . '` FROM `' . self::getTableName() . '` WHERE `' . $this->TFields [0] . '`=:id LIMIT 1';
+                $sql = 'SELECT ' . implode(',',
+                        $this->TFields) . ' FROM ' . self::getTableName() . ' WHERE ' . $this->TFields [0] . '=:id LIMIT 1';
                 $stmt = $this->DBConRead->prepare($sql);
                 $stmt->execute([':id' => $this->{$this->Properties[0]}]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -185,14 +185,18 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
             $bind[':' . $field] = $value;
         }
         if ($this->notExistInStorage) {
-            $bind[':id'] = null;
-            $sql = 'INSERT INTO `' . self::getTableName() . '` (`' . implode('`,`',
-                    $this->TFields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
+            unset($bind[':id']);// = null;
+            $fields = $this->TFields;
+            unset($fields[0]);
+
+            $sql = 'INSERT INTO ' . self::getTableName() . ' (' . implode(',',
+                    $fields) . ') VALUES (' . implode(',', array_keys($bind)) . ')';
+            //die($sql);
             $stmt = $this->DBConWrite->prepare($sql);
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {
                 $error = $stmt->errorInfo();
-                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), $error[0]);
+                throw new Exception('(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), (int) $error[0]);
             }
             $this->Id = $this->DBConWrite->lastInsertId(self::getTableName());
             if ($this->Id) {
@@ -200,16 +204,16 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
                 $success = true;
             }
         } else {
-            $sql = 'UPDATE `' . self::getTableName() . '` SET ';
+            $sql = 'UPDATE ' . self::getTableName() . ' SET ';
             $sets = [];
             foreach ($this->TFields as $key => $field) {
                 if ($key == 0) {
                     continue;
                 }
-                $sets[] = '`' . $field . '`=:' . $field;
+                $sets[] = '' . $field . '=:' . $field;
             }
             $sql .= implode(',', $sets);
-            $sql .= ' WHERE `' . $this->TFields[0] . '`=:' . $this->TFields[0];
+            $sql .= ' WHERE ' . $this->TFields[0] . '=:' . $this->TFields[0];
             $stmt = $this->DBConWrite->prepare($sql);
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {

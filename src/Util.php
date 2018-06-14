@@ -1,4 +1,5 @@
 <?php namespace sanovskiy\SimpleObject;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -31,17 +32,17 @@ class Util
      * @var array
      */
     static private $default_settings = [
-        'dbcon' => [
-            'driver' => 'mysql',
-            'host' => 'localhost',
-            'user' => 'root',
+        'dbcon'            => [
+            'driver'   => 'mysql',
+            'host'     => 'localhost',
+            'user'     => 'root',
             'password' => '',
             'database' => 'simpleobject',
-            'charset' => null
+            'charset'  => null
         ],
-        'path_models' => '',
+        'path_models'      => '',
         'models_namespace' => 'sanovsliy\\SimpleObject\\models\\default\\',
-        'read_connection' => null,
+        'read_connection'  => null,
         'write_connection' => null
     ];
 
@@ -91,11 +92,28 @@ class Util
     {
         if (!isset(self::$connections[$configName]) || null === self::$connections[$configName]) {
             $dbSettings = self::getSettingsValue('dbcon', $configName);
-            $dsn = $dbSettings['driver'].':host=' . $dbSettings['host'] . ';';
+            /*$dsn = $dbSettings['driver'].':host=' . $dbSettings['host'] . ';';
             if (isset($dbSettings['socket'])) {
                 $dsn = $dbSettings['driver'].':unix_socket=' . $dbSettings['socket'] . ';';
             }
-            $dsn = $dsn . 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');
+            $dsn = $dsn . 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');*/
+            switch (strtolower($dbSettings['driver'])) {
+                case 'sqlsrv':
+                    $dsn = $dbSettings['driver'] . ':Server=' . $dbSettings['host'] . ';';
+                    if (!empty($dbSettings['failover'])) {
+                        $dsn .= 'Failover_Partner=' . $dbSettings['failover'] . ';';
+                    }
+                    $dsn .= 'Database=' . $dbSettings['database'];
+                    break;
+                default:
+                case 'mysql':
+                    $dsn = $dbSettings['driver'] . ':host=' . $dbSettings['host'] . ';';
+                    if (isset($dbSettings['socket'])) {
+                        $dsn = $dbSettings['driver'] . ':unix_socket=' . $dbSettings['socket'] . ';';
+                    }
+                    $dsn .= 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');
+                    break;
+            }
             self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
         }
 
@@ -127,7 +145,7 @@ class Util
             throw new Exception('You can call this method only in CLI');
         }
 
-        foreach (self::$settings as $_configName => $_config) {
+        foreach (array_keys(self::$settings) as $_configName) {
             $generator = new ModelGenerator($_configName);
             $generator->run();
         }
