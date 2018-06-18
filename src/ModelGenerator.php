@@ -165,8 +165,20 @@ class ModelGenerator
                 $property2FieldTransform = [];
                 $colVal = [];
 
+                $driver = Util::getSettingsValue('driver', $this->configName);
+
                 //$sql = 'DESCRIBE `' . $tableName . '`';
-                $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table ';
+                switch (strtolower($driver)) {
+                    case 'sqlsrv':
+                        $database_column = 'table_catalog';
+                        break;
+                    default:
+                        $database_column = 'table_schema';
+                        break;
+                }
+
+                $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table AND ' . $database_column . ' = :database';
+                
                 $bind = [
                     ':table'    => $tableName,
                     ':database' => $dbSettings['database']
