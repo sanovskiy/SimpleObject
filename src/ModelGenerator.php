@@ -63,6 +63,7 @@ class ModelGenerator
                     $dateformat = 'Y-m-d H:i:s';
                     break;
                 case 'sqlsrv':
+                case 'odbc':
                     //$sql = 'SELECT CONCAT(TABLE_SCHEMA,\'.\',TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE=:ttype';
                     $sql = 'SELECT TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE=:ttype';
                     $bind = [':ttype' => 'BASE TABLE'];
@@ -91,6 +92,7 @@ class ModelGenerator
                         $CCName = Transform::CCName($tableName);
                         break;
                     case 'sqlsrv':
+                    case 'odbc':
                         $tableName = $tableRow[0];
                         $tableSchema = $tableRow[1];
                         $CCName = Transform::CCName($tableRow[0]);
@@ -175,6 +177,7 @@ class ModelGenerator
                         $sql .= 'AND table_schema = :database';
                         break;
                     case 'sqlsrv':
+                    case 'odbc':
                         $sql .= 'AND table_schema = :schema AND table_catalog = :database';
                         $bind[':schema'] = $tableSchema;
                         break;
