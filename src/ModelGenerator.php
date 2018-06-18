@@ -177,7 +177,7 @@ class ModelGenerator
                         break;
                 }
 
-                $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table AND ' . $database_column . ' = :database';
+                $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table';
 
                 $bind = [
                     ':table'    => $tableName,
