@@ -178,7 +178,7 @@ class ModelGenerator
                 }
 
                 $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table AND ' . $database_column . ' = :database';
-                
+
                 $bind = [
                     ':table'    => $tableName,
                     ':database' => $dbSettings['database']
@@ -186,11 +186,11 @@ class ModelGenerator
 
                 switch (strtolower($dbSettings['driver'])) {
                     case 'mysql':
-                        $sql .= 'AND table_schema = :database';
+                        $sql .= ' AND table_schema = :database';
                         break;
                     case 'sqlsrv':
                     case 'odbc':
-                        $sql .= 'AND table_schema = :schema AND table_catalog = :database';
+                        $sql .= ' AND table_schema = :schema AND table_catalog = :database';
                         $bind[':schema'] = $tableSchema;
                         break;
                 }
