@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
@@ -55,7 +55,7 @@ class Util
 
     /**
      * Database connection
-     * @var null|\sanovskiy\SimpleObject\PDO
+     * @var null|PDO
      */
     static private $connections = [
         'default' => null
@@ -86,7 +86,7 @@ class Util
 
     /**
      * @param string $configName
-     * @return \sanovskiy\SimpleObject\PDO
+     * @return PDO
      */
     public static function getConnection($configName = 'default')
     {

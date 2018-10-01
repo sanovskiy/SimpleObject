@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
@@ -17,16 +17,14 @@
  *
  */
 
-//use sanovskiy;
-
 /**
  * Class ActiveRecordAbstract
- * @package sanovskiy\SimpleObject
+ * @package Sanovskiy\SimpleObject
  * @property string $DBTable
  * @property string $SimpleObjectConfigNameRead
  * @property string $SimpleObjectConfigNameWrite
- * @property array $field2PropertyTransform
- * @property array $property2FieldTransform
+ * @property array  $field2PropertyTransform
+ * @property array  $property2FieldTransform
  */
 abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
 {
@@ -34,12 +32,12 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     protected $SimpleObjectConfigNameWrite = 'default';
 
     /**
-     * @var \sanovskiy\SimpleObject\PDO
+     * @var \Sanovskiy\SimpleObject\PDO
      */
     protected $DBConWrite;
 
     /**
-     * @var \sanovskiy\SimpleObject\PDO
+     * @var \Sanovskiy\SimpleObject\PDO
      */
     protected $DBConRead;
 
@@ -89,8 +87,9 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     public $notExistInStorage = true;
 
     /**
-     * sanovskiy\SimpleObject\ActiveRecordAbstract constructor.
-     * @param int|null $id
+     * ActiveRecordAbstract constructor.
+     *
+     * @param string|int|null $id
      */
     function __construct($id = null)
     {
@@ -110,18 +109,20 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     /**
      * @return bool
      */
-    protected function init()
+    protected function init(): bool
     {
         return true;
     }
 
     /**
      * Loads model properties from database OR array where keys are table fields names
-     * @param null $data
-     * @param bool $applyTransform
+     *
+     * @param null|array $data
+     * @param bool       $applyTransform
+     *
      * @return bool
      */
-    public function load($data = null, $applyTransform = true)
+    public function load(array $data = null, bool $applyTransform = true): bool
     {
         $class = get_class($this);
 
@@ -175,11 +176,12 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     /**
      * Saves model to storage
      * @return bool
+     * @throws Exception
+     * @throws Exception
      */
-    public function save()
+    public function save(): bool
     {
         $bind = [];
-        $success = false;
         $data = $this->__toArray(true, true);
         foreach ($data as $field => $value) {
             $bind[':' . $field] = $value;
@@ -196,7 +198,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {
                 $error = $stmt->errorInfo();
-                throw new Exception('(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), (int) $error[0]);
+                throw new Exception('(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), (int)$error[0]);
             }
             $this->Id = $this->DBConWrite->lastInsertId(self::getTableName());
             if ($this->Id) {
@@ -229,10 +231,12 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
     /**
      * Loads model properties from array where keys are model properties
+     *
      * @param array $data
+     *
      * @return bool
      */
-    public function populate(array $data = [])
+    public function populate(array $data = []): bool
     {
         if (!is_array($data)) {
             return false;
@@ -248,17 +252,30 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return true;
     }
 
+    /**
+     * @param $property
+     *
+     * @return false|int
+     */
     protected function getPropertyId($property)
     {
         return array_search($property, $this->Properties);
     }
 
+    /**
+     * @param $field
+     *
+     * @return false|int
+     */
     protected function getFieldId($field)
     {
         return array_search($field, $this->TFields);
     }
 
-    public function delete()
+    /**
+     * @return bool
+     */
+    public function delete(): bool
     {
         $sql = 'DELETE FROM ' . self::getTableName() . ' WHERE ' . $this->TFields[0] . '=' . ':id';
         $stmt = $this->DBConWrite->prepare($sql);
@@ -267,12 +284,22 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
     }
 
-    public function hasChanges()
+    /**
+     * @return bool
+     * @todo implement db diff check
+     */
+    public function hasChanges(): bool
     {
-        //TODO: implement db diff check
+        return true;
     }
 
-    public function __toArray($useFieldNames = false, $applyTransform = false)
+    /**
+     * @param bool $useFieldNames
+     * @param bool $applyTransform
+     *
+     * @return array
+     */
+    public function __toArray($useFieldNames = false, $applyTransform = false): array
     {
         $result = [];
         foreach ($this->Properties as $index => $property) {
@@ -287,8 +314,10 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return $result;
     }
 
-
-    public function getFields()
+    /**
+     * @return array
+     */
+    public function getFields(): array
     {
         return $this->TFields;
     }
@@ -298,7 +327,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
      */
 
     /**
-     * @return bool
+     * @return mixed
      */
     public function current()
     {
@@ -310,7 +339,9 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return false;
     }
 
-
+    /**
+     * @return mixed
+     */
     public function next()
     {
         $property = next($this->Properties);
@@ -321,19 +352,27 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return false;
     }
 
-
+    /**
+     * @return mixed
+     */
     public function key()
     {
         return current($this->Properties);
     }
 
-    public function valid()
+    /**
+     * @return bool
+     */
+    public function valid(): bool
     {
         $var = $this->current() !== false;
 
         return $var;
     }
 
+    /**
+     * @return void
+     */
     public function rewind()
     {
         reset($this->Properties);
@@ -345,6 +384,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
     /**
      * @param mixed $offset
+     *
      * @return bool
      */
     public function offsetExists($offset)
@@ -399,6 +439,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
     /**
      * @param $name
+     *
      * @return mixed
      */
     function __get($name)
@@ -428,13 +469,13 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     }
 
 
-    public static function clearCache($model=null)
+    public static function clearCache($model = null)
     {
-        if (is_null($model)){
+        if (is_null($model)) {
             self::$runtimeCache = [];
             return;
         }
-        if (isset(self::$runtimeCache[$model])){
+        if (isset(self::$runtimeCache[$model])) {
             unset(self::$runtimeCache[$model]);
         }
         return;
@@ -447,6 +488,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
     public static function getTableName()
     {
+        /** @noinspection PhpUndefinedFieldInspection */
         return static::$DBTable;
     }
 

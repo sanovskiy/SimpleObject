@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -18,7 +18,7 @@
 
 /**
  * Filters class
- * @package sanovskiy\SimpleObject
+ * @package Sanovskiy\SimpleObject
  * @method Filter eq() eq(string $field, mixed $value)
  * @method Filter gt() gt(string $field, mixed $value)
  * @method Filter lt() lt(string $field, mixed $value)
@@ -147,7 +147,7 @@ class Filter implements \Iterator
         return $this;
     }
 
-    protected $sql = null;
+    protected $sql = '';
     protected $bind = null;
 
     /**
@@ -194,10 +194,11 @@ class Filter implements \Iterator
     }
 
     /**
-     * @param bool $countQuery
+     * @param bool   $countQuery
      * @param string $table
      * @param string $idfield
-     * @return array SQL string with bind array
+     *
+     * @return string SQL string with bind array
      */
     public function build($countQuery = false, $table = '%%table%%', $idfield = '%%idfield%%')
     {
@@ -335,8 +336,9 @@ class Filter implements \Iterator
     }
 
     /**
-     * @param string $field
+     * @param        $expression
      * @param string $direction
+     *
      * @return Filter
      */
     public function orderExpresstion($expression, $direction = 'ASC')

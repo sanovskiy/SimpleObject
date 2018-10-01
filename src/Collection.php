@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
@@ -17,10 +17,18 @@
  *
  */
 
-use sanovskiy;
+use Sanovskiy\Traits\ArrayAccess;
+use Sanovskiy\Traits\Countable;
+use Sanovskiy\Traits\Iterator;
 
+/**
+ * Class Collection
+ * @package Sanovskiy\SimpleObject
+ */
 class Collection implements \Iterator, \ArrayAccess, \Countable
 {
+    use Iterator, ArrayAccess, Countable;
+
     const ERROR_LOCKED = 'Collection is locked. You can\'t modify elements list';
     const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
     const ERROR_CLASS_NOT_FOUND = 'Class not found';
@@ -32,17 +40,18 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     protected $isUnlockable = true;
 
     /**
-     * @var sanovskiy\SimpleObject\Filter
+     * @var Filter
      */
     protected $filters = null;
 
     /**
-     * @param $model_name
-     * @param PDOStatement|sanovskiy\SimpleObject\Filter|array $data
-     * @return sanovskiy\SimpleObject\Collection
-     * @throws sanovskiy\SimpleObject\Exception
+     * @param                                                  $model_name
+     * @param PDOStatement|Filter|array $data
+     *
+     * @return Collection
+     * @throws Exception
      */
-    static function factory($model_name, $data = null)
+    static function factory($model_name, $data = null): Collection
     {
         if (!class_exists($model_name)) {
             throw new Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
@@ -51,19 +60,20 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         $collection->setClassName($model_name);
         if ($data instanceof PDOStatement) {
             while ($row = $data->fetch()) {
-                /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
+                /*  @var ActiveRecordAbstract $object */
                 $object = new $model_name;
                 $object->load($row);
                 $collection->push($object);
             }
         } elseif ($data instanceof Filter || is_null($data)) {
-            /*  @var sanovskiy\SimpleObject\ActiveRecordAbstract $object */
+            /*  @var ActiveRecordAbstract $object */
             $object = new $model_name;
             if (is_null($data)) {
-                $data = Filter::getNewInstance()/*->gt($object->getFields()[0], 0)*/;
+                $data = Filter::getNewInstance();
             }
 
             /** @noinspection PhpUndefinedFieldInspection */
+            /** @noinspection PhpUndefinedMethodInspection */
             $data->build(false, $model_name::getTableName(), $object->IdField);
             $stmt = Util::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
             if (!$stmt->execute($data->getBind())) {
@@ -77,7 +87,9 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     * @param null $filters
+     * @param Filter $filters
+     *
+     * @return void
      */
     public function setFilters(Filter $filters)
     {
@@ -85,12 +97,14 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     //<editor-fold desc="Collection interface">
+
     /**
      * SimpleObject_Collection constructor.
-     * @param array $data Elements array
-     * @param null $forceClass
+     *
+     * @param array  $data Elements array
+     * @param string $forceClass
      */
-    public function __construct($data = [], $forceClass = null)
+    public function __construct(array $data = [], string $forceClass = null)
     {
         if (!is_null($forceClass)) {
             $this->className = $forceClass;
@@ -109,10 +123,11 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      *
-     * @param boolean $disallowUnlock
+     * @param bool $disallowUnlock
+     *
      * @return Collection
      */
-    public function lock($disallowUnlock = false)
+    public function lock(bool $disallowUnlock = false): Collection
     {
         $this->isLocked = true;
         if ($disallowUnlock) {
@@ -126,7 +141,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function unlock()
+    public function unlock(): Collection
     {
         if (!$this->isUnlockable) {
             throw new Exception('Collection is not unlockable.');
@@ -137,14 +152,16 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * Sets class name for an empty collection
+     *
      * @param string $name
-     * @return boolean|Collection
+     *
+     * @return Collection
      * @throws Exception
      */
-    public function setClassName($name)
+    public function setClassName(string $name): Collection
     {
         if (empty($name)) {
-            return false;
+            return $this;
         }
         if (count($this->records) > 0) {
             throw new Exception('Collection not empty. You can\'t change classname');
@@ -159,10 +176,12 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * Returns $n-th element
+     *
      * @param int $n
+     *
      * @return null
      */
-    public function getElement($n = 0)
+    public function getElement(int $n = 0)
     {
         return isset($this->records[$n]) ? $this->records[$n] : null;
     }
@@ -171,7 +190,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     private $returnedIdList = [];
 
     /**
-     * @return bool
+     * @return mixed
      */
     public function getNextRandomElement()
     {
@@ -185,7 +204,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     *
+     * @return void
      */
     public function resetRandom()
     {
@@ -196,6 +215,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     //<editor-fold desc="Array behavior">
     /**
      * @param $value
+     *
      * @return bool
      * @throws Exception
      */
@@ -210,7 +230,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         if (is_null($this->className) || empty($this->className)) {
             $this->className = get_class($value);
         }
-        if (!($value instanceof $this->className) && !is_subclass_of($value, $this->className)) {
+        if (!($value instanceof $this->className)) {
             throw new Exception(self::ERROR_CLASS_MISMATCH);
         }
         array_push($this->records, $value);
@@ -249,10 +269,11 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * @param $value
+     *
      * @return bool
      * @throws Exception
      */
-    public function unshift($value)
+    public function unshift($value): bool
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
@@ -274,8 +295,10 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     //<editor-fold desc="Custom items actions">
     /**
-     * @param bool $reverse
+     * @param bool   $reverse
      * @param string $field
+     *
+     * @return void
      * @throws Exception
      */
     public function reindexByField($reverse = false, $field = 'Id')
@@ -296,11 +319,12 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     * @param $method
-     * @param array $args
+     * @param string $method
+     * @param array  $args
+     *
      * @return array
      */
-    public function callForEach($method, $args = [])
+    public function callForEach(string $method, array $args = []): array
     {
         $reply = [];
         for ($index = 0; $index < count($this->records); $index++) {
@@ -310,8 +334,10 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     * @param $property
+     * @param      $property
      * @param null $value
+     *
+     * @return void
      */
     public function setForEach($property, $value = null)
     {
@@ -322,9 +348,10 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * @param string|array $property
+     *
      * @return array
      */
-    public function getFromEach($property)
+    public function getFromEach($property): array
     {
         $values = [];
         foreach ($this->records as $index => $element) {
@@ -345,12 +372,13 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     * @param $property string
-     * @param $value mixed
+     * @param string $property
+     * @param mixed  $value
+     *
      * @return Collection
      * @throws Exception
      */
-    public function getElementsByPropertyValue($property, $value)
+    public function getElementsByPropertyValue(string $property, $value): Collection
     {
         $elements = new self;
         for ($index = 0; $index < count($this->records); $index++) {
@@ -365,12 +393,13 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
-     * @param $method string
-     * @param $value mixed
+     * @param string $method
+     * @param mixed  $value
+     *
      * @return Collection
      * @throws Exception
      */
-    public function getElementsByFunctionResult($method, $value)
+    public function getElementsByFunctionResult(string $method, $value): Collection
     {
         $elements = new self;
         for ($index = 0; $index < count($this->records); $index++) {
@@ -387,40 +416,59 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * @return array
      */
-    public function getAllRecords()
+    public function getAllRecords(): array
     {
         return $this->records;
     }
 
-    function __get($name)
+    /**
+     * @param string $name
+     *
+     * @return mixed
+     */
+    function __get(string $name, bool $getAsString = false, string $stringSeparator = '|')
     {
         $object = new $this->className;
         if (in_array($name, $object->Properties)) {
-            return implode(' ', $this->getFromEach($name));
+            $result = $this->getFromEach($name);
+            if ($getAsString) {
+                return implode($stringSeparator, $result);
+            }
+            return $result;
         }
         return null;
     }
     //</editor-fold>
 
     //<editor-fold desc="Paging">
-    public function getPage()
+    /**
+     * @return int
+     * @throws Exception
+     */
+    public function getPage(): int
     {
+        if (!($this->filters instanceof Filter)) {
+            throw new Exception('Collection is not filtered');
+        }
         if (!$this->filters->isPaged()) {
-            return false;
+            throw new Exception('Collection is not paged');
         }
         $offset = $this->filters->getOffset();
         $limit = $this->filters->getLimit();
-        return ($offset / $limit) + 1;
+        return intval($offset / $limit) + 1;
     }
 
     /**
-     * @return bool|int
+     * @return int
      * @throws Exception
      */
-    public function getTotalPagedCount()
+    public function getTotalPagedCount(): int
     {
+        if (!($this->filters instanceof Filter)) {
+            throw new Exception('Collection is not filtered');
+        }
         if (!$this->filters->isPaged()) {
-            return false;
+            throw new Exception('Collection is not paged');
         }
         $object = new $this->className;
         /** @noinspection PhpUndefinedFieldInspection */
@@ -431,132 +479,24 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
             throw new Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
         }
 
-        return intval($stmt->fetchColumn());
+        return (int)$stmt->fetchColumn();
     }
 
-    public function getRecordsCountOnPage()
+    /**
+     * @return int
+     * @throws Exception
+     */
+    public function getRecordsCountOnPage(): int
     {
+        if (!($this->filters instanceof Filter)) {
+            throw new Exception('Collection is not filtered');
+        }
         if (!$this->filters->isPaged()) {
-            return false;
+            throw new Exception('Collection is not paged');
         }
         return $this->filters->getLimit();
     }
     //</editor-fold>
 
-    //<editor-fold desc="Iterator implementation">
-    /**
-     *
-     */
-    public function rewind()
-    {
-        reset($this->records);
-    }
-
-    /**
-     * @return mixed
-     */
-    public function current()
-    {
-        $var = current($this->records);
-        return $var;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function key()
-    {
-        $var = key($this->records);
-        return $var;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function next()
-    {
-        $var = next($this->records);
-        return $var;
-    }
-
-    /**
-     * @return bool
-     */
-    public function valid()
-    {
-        $var = $this->current() !== false;
-        return $var;
-    }
-
-    /**
-     * Countable implemetation
-     */
-    public function count()
-    {
-        return count($this->records);
-    }
-
-    /**
-     * ArrayAccess implementation
-     */
-
-    /**
-     * @param mixed $offset
-     * @return bool
-     */
-    public function offsetExists($offset)
-    {
-        return isset($this->records[$offset]);
-    }
-
-    /**
-     * @param mixed $offset
-     * @return null
-     */
-    public function offsetGet($offset)
-    {
-        if (isset($this->records[$offset])) {
-            return $this->records[$offset];
-        }
-        return null;
-    }
-
-    /**
-     * @param mixed $offset
-     * @param mixed $value
-     * @return bool|mixed|string
-     * @throws Exception
-     */
-    public function offsetSet($offset, $value)
-    {
-        if ($this->isLocked) {
-            throw new Exception(self::ERROR_LOCKED);
-        }
-        if (!is_object($value) || !is_numeric($offset)) {
-            return false;
-        }
-        if (is_null($this->className) || empty($this->className)) {
-            $this->className = get_class($value);
-        }
-        if (!($value instanceof $this->className) && !is_subclass_of($value, $this->className)) {
-            throw new Exception(self::ERROR_CLASS_MISMATCH);
-        }
-        if (is_null($offset)) {
-            return $this->records[] = $value;
-        } elseif (isset($this->records[$offset]) || $offset == max(array_keys($this->records)) + 1) {
-            return $this->records[$offset] = $value;
-        }
-        return false;
-    }
-
-    /**
-     * @param mixed $offset
-     * @return bool
-     */
-    public function offsetUnset($offset)
-    {
-        return false;
-    }
-    //</editor-fold>
 
 }

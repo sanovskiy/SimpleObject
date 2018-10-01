@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -23,15 +23,16 @@ class PDOStatement extends \PDOStatement
 {
 
     /**
-     * @var \sanovskiy\SimpleObject\PDO
+     * @var PDO
      */
     protected $pdo;
 
     /**
      * SimpleObject_PDOStatement constructor.
-     * @param \sanovskiy\SimpleObject\PDO $pdo
+     *
+     * @param PDO $pdo
      */
-    protected function __construct(\sanovskiy\SimpleObject\PDO $pdo)
+    protected function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
     }

@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -16,7 +16,10 @@
  *
  */
 
-
+/**
+ * Class AutoloadModels
+ * @package Sanovskiy\SimpleObject
+ */
 class AutoloadModels
 {
     /**
@@ -25,10 +28,16 @@ class AutoloadModels
      */
     public static function register()
     {
-        return spl_autoload_register(['sanovskiy\\SimpleObject\\AutoloadModels', 'autoload']);
+        return spl_autoload_register(['Sanovskiy\\SimpleObject\\AutoloadModels', 'autoload']);
     }
 
-    public static function autoload($classname)
+    /**
+     * @param string $classname
+     *
+     * @return bool
+     * @throws Exception
+     */
+    public static function autoload(string $classname): bool
     {
         if (!($config = self::detectConfig($classname))) {
             return false;
@@ -47,13 +56,19 @@ class AutoloadModels
         return true;
     }
 
-    protected static function detectConfig($classname)
+
+    /**
+     * @param string $classname
+     *
+     * @return string|bool
+     */
+    protected static function detectConfig(string $classname)
     {
         foreach (Util::getConfigNames() as $config) {
             if (strpos($classname, Util::getSettingsValue('models_namespace', $config)) === 0) {
                 return $config;
             }
         }
-        return null;
+        return false;
     }
 }

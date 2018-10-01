@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -192,7 +192,7 @@ class Transform
         if (!class_exists($className) || !($className instanceof ActiveRecordAbstract)) {
             return $value;
         }
-        /* @var \sanovskiy\SimpleObject\ActiveRecordAbstract $instance */
+        /* @var \Sanovskiy\SimpleObject\ActiveRecordAbstract $instance */
         $instance = new $className($value);
         return $instance->__toArray();
     }
