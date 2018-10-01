@@ -426,15 +426,12 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return mixed
      */
-    function __get(string $name, bool $getAsString = false, string $stringSeparator = '|')
+    function __get($name)
     {
         $object = new $this->className;
         if (in_array($name, $object->Properties)) {
             $result = $this->getFromEach($name);
-            if ($getAsString) {
-                return implode($stringSeparator, $result);
-            }
-            return $result;
+            return implode(', ', $result);
         }
         return null;
     }
