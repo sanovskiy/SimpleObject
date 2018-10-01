@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -17,7 +17,7 @@
  */
 
 /**
- * Class \sanovskiy\SimpleObject\PDO
+ * Class \Sanovskiy\SimpleObject\PDO
  */
 class PDO extends \PDO
 {
@@ -28,7 +28,7 @@ class PDO extends \PDO
     protected $longest_query_time = 0;
 
     /**
-     * sanovskiy\SimpleObject\PDO constructor.
+     * Sanovskiy\SimpleObject\PDO constructor.
      * @param $dsn
      * @param string $username
      * @param string $password
@@ -37,7 +37,7 @@ class PDO extends \PDO
     public function __construct($dsn, $username = '', $password = '', $driver_options = array())
     {
         parent::__construct($dsn, $username, $password, $driver_options);
-        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('sanovskiy\SimpleObject\PDOStatement', array($this)));
+        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('Sanovskiy\SimpleObject\PDOStatement', array($this)));
     }
 
     /**
@@ -85,10 +85,14 @@ class PDO extends \PDO
         return $result;
     }
 
+    /** @noinspection PhpSignatureMismatchDuringInheritanceInspection */
     /**
+     * Overloads parent query method to add some profiling
+     * Some IDEs can mark declaration of this method as incopatible with parent. That's not true.
      * @param string $statement
      * @param int $mode
      * @param null $arg3
+     *
      * @return \PDOStatement
      */
     public function query($statement, $mode = \PDO::ATTR_DEFAULT_FETCH_MODE, $arg3 = null)

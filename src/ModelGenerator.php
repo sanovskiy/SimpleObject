@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
@@ -36,8 +36,8 @@ class ModelGenerator
 
     /**
      * ModelGenerator constructor.
+     *
      * @param string $configName
-     * @param array $config
      */
     public function __construct($configName)
     {
@@ -128,7 +128,7 @@ class ModelGenerator
                 $BaseModel = new PhpClass();
                 $BaseModel
                     ->setNamespace($tableInfo['base_class_namespace'])
-                    ->setUseStatements(['sanovskiy\SimpleObject\ActiveRecordAbstract'])
+                    ->setUseStatements(['Sanovskiy\SimpleObject\ActiveRecordAbstract'])
                     ->setName($tableInfo['class_name'])
                     ->setParentClassName('ActiveRecordAbstract')
                     ->setAbstract(true)
@@ -167,16 +167,6 @@ class ModelGenerator
 
                 $driver = Util::getSettingsValue('driver', $this->configName);
 
-                //$sql = 'DESCRIBE `' . $tableName . '`';
-                switch (strtolower($driver)) {
-                    case 'sqlsrv':
-                        $database_column = 'table_catalog';
-                        break;
-                    default:
-                        $database_column = 'table_schema';
-                        break;
-                }
-
                 $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table';
 
                 $bind = [
@@ -184,7 +174,7 @@ class ModelGenerator
                     ':database' => $dbSettings['database']
                 ];
 
-                switch (strtolower($dbSettings['driver'])) {
+                switch (strtolower($driver)) {
                     case 'mysql':
                         $sql .= ' AND table_schema = :database';
                         break;
