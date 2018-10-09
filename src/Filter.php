@@ -107,7 +107,7 @@ class SimpleObject_Filter implements Iterator {
 
 	/**
 	 *
-	 * @param type $bool
+	 * @param bool $bool
 	 * @return SimpleObject_Filter
 	 */
 	public function orQuery($bool) {
@@ -117,7 +117,13 @@ class SimpleObject_Filter implements Iterator {
 
 	/**
 	 * Returns assembled query
-	 */
+     *
+     * @param Zend_Db_Adapter_Abstract $DBCon
+     * @param bool $countQuery
+     *
+     * @return string
+     * @throws Zend_Exception
+     */
 	function getQuery($DBCon=null, $countQuery=false) {
 		if (is_null($DBCon)) {
 			$DBCon = Zend_Registry::get('db');

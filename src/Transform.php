@@ -23,6 +23,7 @@ class SimpleObject_Transform {
         if (method_exists($obj, $func)) {
             return $obj->$func($value, $args);
         }
+        return null;
     }
 
     function urlCorrect($value) {
@@ -142,6 +143,7 @@ class SimpleObject_Transform {
 
     function SOData($value, $params) {
         $className = $params [1];
+        /** @var SimpleObject_Abstract $instance */
         $instance = new $className($value);
         return $instance->toArray();
     }
@@ -156,7 +158,9 @@ class SimpleObject_Transform {
 
     public function BBParse($value) {
         if (class_exists('ubbParser')) {
+            /** @noinspection PhpUndefinedClassInspection */
             $bbParser = new ubbParser();
+            /** @noinspection PhpUndefinedMethodInspection */
             return $bbParser->parse($value);
         }
         return false;

@@ -1,0 +1,29 @@
+{
+  "name": "sanovskiy/simple-object",
+  "version": "1.8.11",
+  "description": "Simple ORM for MySQL",
+  "type": "library",
+  "keywords": [
+    "ORM"
+  ],
+  "license": "Apache-2.0",
+  "require": {
+    "php": ">=5.4.0",
+    "ext-pdo": "*",
+    "zendframework/zendframework1": "^1.12",
+    "ext-json": "*"
+  },
+  "authors": [
+    {
+      "name": "Pavel Terentyev",
+      "email": "pavel.terentyev@gmail.com",
+      "homepage": "http://terentyev.info",
+      "role": "Developer"
+    }
+  ],
+  "autoload": {
+    "psr-0": {
+      "SimpleObject_": "src/"
+    }
+  }
+}
