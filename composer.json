@@ -1,6 +1,6 @@
 {
   "name": "sanovskiy/simple-object",
-  "version": "1.8.12",
+  "version": "1.8.13",
   "description": "Simple ORM for MySQL",
   "type": "library",
   "keywords": [
@@ -23,7 +23,7 @@
   ],
   "autoload": {
     "psr-0": {
-      "SimpleObject_": "lib/SimpleObject/"
+      "SimpleObject_": "lib/"
     }
   }
 }
