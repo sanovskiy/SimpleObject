@@ -1,6 +1,6 @@
 {
   "name": "sanovskiy/simple-object",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "Simple ORM for MySQL and MSSQL",
   "type": "library",
   "keywords": [
