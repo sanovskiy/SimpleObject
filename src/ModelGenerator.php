@@ -175,6 +175,7 @@ class ModelGenerator
                 ];
 
                 switch (strtolower($driver)) {
+                    default:
                     case 'mysql':
                         $sql .= ' AND table_schema = :database';
                         break;
