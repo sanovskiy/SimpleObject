@@ -32,12 +32,12 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     protected $SimpleObjectConfigNameWrite = 'default';
 
     /**
-     * @var \Sanovskiy\SimpleObject\PDO
+     * @var PDO
      */
     protected $DBConWrite;
 
     /**
-     * @var \Sanovskiy\SimpleObject\PDO
+     * @var PDO
      */
     protected $DBConRead;
 
@@ -187,13 +187,12 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
             $bind[':' . $field] = $value;
         }
         if ($this->notExistInStorage) {
-            unset($bind[':id']);// = null;
+            unset($bind[':id']);
             $fields = $this->TFields;
             unset($fields[0]);
 
-            $sql = 'INSERT INTO ' . self::getTableName() . ' (' . implode(',',
-                    $fields) . ') VALUES (' . implode(',', array_keys($bind)) . ')';
-            //die($sql);
+            $sql = 'INSERT INTO `' . self::getTableName() . '` (`' . implode('`,`', $fields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
+
             $stmt = $this->DBConWrite->prepare($sql);
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {
@@ -206,16 +205,16 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
                 $success = true;
             }
         } else {
-            $sql = 'UPDATE ' . self::getTableName() . ' SET ';
+            $sql = 'UPDATE `' . self::getTableName() . '` SET ';
             $sets = [];
             foreach ($this->TFields as $key => $field) {
                 if ($key == 0) {
                     continue;
                 }
-                $sets[] = '' . $field . '=:' . $field;
+                $sets[] = '`' . $field . '``=:' . $field;
             }
             $sql .= implode(',', $sets);
-            $sql .= ' WHERE ' . $this->TFields[0] . '=:' . $this->TFields[0];
+            $sql .= ' WHERE `' . $this->TFields[0] . '``=:' . $this->TFields[0];
             $stmt = $this->DBConWrite->prepare($sql);
             $success = $stmt->execute($bind);
             if (!$success && $stmt->errorCode()) {
@@ -282,15 +281,6 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
 
         return $stmt->execute([':id' => $this->Id]);
 
-    }
-
-    /**
-     * @return bool
-     * @todo implement db diff check
-     */
-    public function hasChanges(): bool
-    {
-        return true;
     }
 
     /**
@@ -410,6 +400,12 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return false;
     }
 
+    /**
+     * @param mixed $offset
+     * @param mixed $value
+     *
+     * @return bool|mixed
+     */
     public function offsetSet($offset, $value)
     {
         if (in_array($offset, $this->Properties)) {
@@ -422,6 +418,11 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return false;
     }
 
+    /**
+     * @param mixed $offset
+     *
+     * @return bool
+     */
     public function offsetUnset($offset)
     {
         return false;
@@ -486,6 +487,9 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return get_called_class();
     }
 
+    /**
+     * @return string
+     */
     public static function getTableName()
     {
         /** @noinspection PhpUndefinedFieldInspection */
