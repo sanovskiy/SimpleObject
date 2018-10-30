@@ -1,6 +1,6 @@
 {
   "name": "sanovskiy/simple-object",
-  "version": "4.0.3",
+  "version": "4.0.4",
   "description": "Simple ORM for MySQL and MSSQL",
   "type": "library",
   "keywords": [
@@ -13,7 +13,8 @@
     "ext-json": "*",
     "sanovskiy/traitlib": "^1.0",
     "gossi/php-code-generator": ">=0.5",
-    "symfony/console": ">=4.0"
+    "symfony/console": ">=4.0",
+    "monolog/monolog": "^1.23"
   },
   "authors": [
     {
