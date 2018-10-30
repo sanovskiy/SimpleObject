@@ -119,10 +119,12 @@ class Util
                     break;
             }
             self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
-            if ($dbSettings['sql_logfile'] && file_exists(dirname($dbSettings['sql_logfile'])) && is_writeable(dirname($dbSettings['sql_logfile']))){
+            $logfile = self::getSettingsValue('sql_logfile',$configName);
+
+            if ($logfile && file_exists(dirname($logfile)) && is_writeable(dirname($logfile))){
                 try {
                     $logger = new Logger('SO Logger');
-                    $logger->pushHandler(new StreamHandler($dbSettings['sql_logfile']));
+                    $logger->pushHandler(new StreamHandler($logfile));
                     self::$connections[$configName]->setLogger($logger);
                 } catch (\Exception $e) {
 
