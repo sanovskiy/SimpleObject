@@ -27,6 +27,7 @@ class PDOStatement extends \PDOStatement
      */
     protected $pdo;
 
+
     /**
      * SimpleObject_PDOStatement constructor.
      *
@@ -39,13 +40,19 @@ class PDOStatement extends \PDOStatement
 
     /**
      * @param mixed $bound_input_params
+     *
      * @return bool
      * @internal param array|null $input_parameters
      */
     public function execute($bound_input_params = NULL)
     {
         $start = $this->pdo->getMicro();
-        $result = parent::execute($bound_input_params);
+        try {
+            $result = parent::execute($bound_input_params);
+        } catch (\Exception $e) {
+            $this->pdo->log('Error: ' . $e->getMessage() . ' ' . $this->queryString, ['bind' => $bound_input_params]);
+            throw $e;
+        }
         $end = $this->pdo->getMicro();
         $this->pdo->registerTime($start, $end, $this->queryString);
         return $result;

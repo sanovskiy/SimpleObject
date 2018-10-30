@@ -1,5 +1,8 @@
 <?php namespace Sanovskiy\SimpleObject;
 
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -43,7 +46,8 @@ class Util
         'path_models'      => '',
         'models_namespace' => 'sanovsliy\\SimpleObject\\models\\default\\',
         'read_connection'  => null,
-        'write_connection' => null
+        'write_connection' => null,
+        'sql_logfile'    => null
     ];
 
     /**
@@ -55,7 +59,7 @@ class Util
 
     /**
      * Database connection
-     * @var null|PDO
+     * @var PDO[]
      */
     static private $connections = [
         'default' => null
@@ -115,6 +119,15 @@ class Util
                     break;
             }
             self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
+            if ($dbSettings['sql_logfile'] && file_exists(dirname($dbSettings['sql_logfile'])) && is_writeable(dirname($dbSettings['sql_logfile']))){
+                try {
+                    $logger = new Logger('SO Logger');
+                    $logger->pushHandler(new StreamHandler($dbSettings['sql_logfile']));
+                    self::$connections[$configName]->setLogger($logger);
+                } catch (\Exception $e) {
+
+                }
+            }
         }
 
         return self::$connections[$configName];
