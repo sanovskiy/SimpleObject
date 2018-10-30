@@ -211,7 +211,7 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
                 if ($key == 0) {
                     continue;
                 }
-                $sets[] = '`' . $field . '``=:' . $field;
+                $sets[] = '`' . $field . '`=:' . $field;
             }
             $sql .= implode(',', $sets);
             $sql .= ' WHERE `' . $this->TFields[0] . '``=:' . $this->TFields[0];
