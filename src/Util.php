@@ -1,8 +1,5 @@
 <?php namespace Sanovskiy\SimpleObject;
 
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
-
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -123,8 +120,8 @@ class Util
 
             if ($logfile && file_exists(dirname($logfile)) && is_writeable(dirname($logfile))){
                 try {
-                    $logger = new Logger('SO Logger');
-                    $logger->pushHandler(new StreamHandler($logfile));
+                    $logger = new \Monolog\Logger('SO Logger');
+                    $logger->pushHandler(new \Monolog\Handler\StreamHandler($logfile));
                     self::$connections[$configName]->setLogger($logger);
                 } catch (\Exception $e) {
 

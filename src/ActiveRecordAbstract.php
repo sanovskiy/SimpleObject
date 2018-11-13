@@ -1,35 +1,25 @@
-<?php namespace Sanovskiy\SimpleObject;
-
+<?php
 /**
- * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
+ * Created: {13.11.2018}
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * @author    Pavel Terentyev
+ * @copyright 2018
  */
+
+namespace Sanovskiy\SimpleObject;
+
+
+use Envms\FluentPDO\Query;
 
 /**
  * Class ActiveRecordAbstract
  * @package Sanovskiy\SimpleObject
- * @property string $DBTable
- * @property string $SimpleObjectConfigNameRead
- * @property string $SimpleObjectConfigNameWrite
- * @property array  $field2PropertyTransform
- * @property array  $property2FieldTransform
+ * @property integer $Id
  */
-abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
+class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
 {
-    protected $SimpleObjectConfigNameRead = 'default';
-    protected $SimpleObjectConfigNameWrite = 'default';
+    protected static $SimpleObjectConfigNameRead = 'default';
+    protected static $SimpleObjectConfigNameWrite = 'default';
 
     /**
      * @var PDO
@@ -44,61 +34,41 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     /**
      * @var string
      */
-    protected static $DBTable = '';
+    protected static $TableName = '';
 
     /**
-     * @var string
-     */
-    public $idSequence = '';
-
-    /**
+     * Model properties to field mapping
      * @var array
      */
-    protected $TFields = [];
-
-    /**
-     * @var array
-     */
-    protected $Properties = [];
-
-    /**
-     * @var array
-     */
-    protected $field2PropertyTransform = [];
-
-    /**
-     * @var array
-     */
-    protected $property2FieldTransform = [];
-
-    /**
-     * @var array
-     */
-    protected static $runtimeCache = [];
-
-    /**
-     * @var int|null
-     */
-    public $Id = null;
+    protected static $propertiesMapping = [];
 
     /**
      * @var bool
      */
-    public $notExistInStorage = true;
+    protected $existInStorage = false;
+
+    protected $values = [];
+    protected $loadedValues = [];
+
+    protected static $dataTransformRules = [];
 
     /**
      * ActiveRecordAbstract constructor.
      *
-     * @param string|int|null $id
+     * @param int|null $id
+     *
+     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
      */
-    function __construct($id = null)
+    function __construct(?int $id = null)
     {
-        $this->init();
-        $this->DBConRead = Util::getConnection($this->SimpleObjectConfigNameRead);
-        $this->DBConWrite = Util::getConnection($this->SimpleObjectConfigNameWrite);
+        if (!$this->init()) {
+            throw new Exception('Model ' . static::class . '::init() failed');
+        }
+        $this->DBConRead = Util::getConnection(static::$SimpleObjectConfigNameRead);
+        $this->DBConWrite = Util::getConnection(static::$SimpleObjectConfigNameWrite);
         if (is_null($id)) {
             $this->Id = null;
-
             return;
         }
 
@@ -114,231 +84,378 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
         return true;
     }
 
+    //<editor-fold desc="***CRUD***">
+
     /**
-     * Loads model properties from database OR array where keys are table fields names
-     *
-     * @param null|array $data
-     * @param bool       $applyTransform
+     * @param bool $forceLoad
      *
      * @return bool
+     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
      */
-    public function load(array $data = null, bool $applyTransform = true): bool
+    protected function load($forceLoad = false): bool
     {
-        $class = get_class($this);
-
-        if (!is_null($data)) {
-            $result = $data;
-        } else {
-            if (
-                isset(self::$runtimeCache[$class][$this->{$this->Properties[0]}]) &&
-                !empty(self::$runtimeCache[$class][$this->{$this->Properties [0]}])
-            ) {
-                $result = self::$runtimeCache[$class][$this->{$this->Properties [0]}];
-            } else {
-                $sql = 'SELECT ' . implode(',',
-                        $this->TFields) . ' FROM ' . self::getTableName() . ' WHERE ' . $this->TFields [0] . '=:id LIMIT 1';
-                $stmt = $this->DBConRead->prepare($sql);
-                $stmt->execute([':id' => $this->{$this->Properties[0]}]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $result;
+        if ($forceLoad || !($result = RuntimeCache::getInstance()->get(static::class, $this->Id))) {
+            $query = (new Query($this->DBConRead))->from(static::$TableName);
+            $query
+                ->select(array_keys(static::$propertiesMapping), true)
+                ->where('id = ?', $this->__get($this->getFieldProperty('id')))
+            ;
+            if (!$result = $query->fetch()) {
+                $this->existInStorage = false;
+                return false;
+                //throw new Exception('Error loading data for ' . static::class . ' (Id:' . $this->__get('id') . ')');
             }
+            $this->existInStorage = true;
+            RuntimeCache::getInstance()->put(static::class, $this->Id, $result);
+            $this->loadedValues = $result;
         }
-        if (!is_array($result)) {
-            return false;
-        }
-
-        foreach ($this->Properties as $PropertyId => $PropertyName) {
-            $field = $this->TFields[$PropertyId];
-            if (!isset($result[$field])) {
-                continue;
-            }
-            $value = $result[$field];
-
-            if (
-                $applyTransform &&
-                isset($this->field2PropertyTransform [$PropertyId]) &&
-                !is_null($this->field2PropertyTransform [$PropertyId])
-            ) {
-                $this->$PropertyName = Transform::apply_transform($this->field2PropertyTransform [$PropertyId], $value);
-            } else {
-                $this->$PropertyName = $value;
-            }
-        }
-
-        if ($this->Id) {
-            $this->notExistInStorage = false;
-        }
-
+        $this->populate($result);
         return true;
-
     }
 
     /**
-     * Saves model to storage
+     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
+     */
+    public function reload()
+    {
+        $this->load(true);
+    }
+
+    /**
+     * @param bool $force
+     *
      * @return bool
      * @throws Exception
-     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
      */
-    public function save(): bool
+    public function save($force = false): bool
     {
-        $bind = [];
-        $data = $this->__toArray(true, true);
-        foreach ($data as $field => $value) {
-            $bind[':' . $field] = $value;
-        }
-        if ($this->notExistInStorage) {
-            unset($bind[':id']);
-            $fields = $this->TFields;
-            unset($fields[0]);
+        $data = $this->getDataForSave();
 
-            $sql = 'INSERT INTO `' . self::getTableName() . '` (`' . implode('`,`', $fields) . '`) VALUES (' . implode(',', array_keys($bind)) . ')';
+        unset($data['id']);
+        switch ($this->isExistInStorage()) {
+            case false: // Create new record
+                $insert = (new Query($this->DBConWrite))
+                    ->insertInto(static::$TableName)
+                    ->values($data)
+                ;
 
-            $stmt = $this->DBConWrite->prepare($sql);
-            $success = $stmt->execute($bind);
-            if (!$success && $stmt->errorCode()) {
-                $error = $stmt->errorInfo();
-                throw new Exception('(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), (int)$error[0]);
-            }
-            $this->Id = $this->DBConWrite->lastInsertId(self::getTableName());
-            if ($this->Id) {
-                $this->notExistInStorage = false;
-                $success = true;
-            }
-        } else {
-            $sql = 'UPDATE `' . self::getTableName() . '` SET ';
-            $sets = [];
-            foreach ($this->TFields as $key => $field) {
-                if ($key == 0) {
-                    continue;
+                if (!($id = $insert->execute())) {
+                    return false;
                 }
-                $sets[] = '`' . $field . '`=:' . $field;
-            }
-            $sql .= implode(',', $sets);
-            $sql .= ' WHERE `' . $this->TFields[0] . '``=:' . $this->TFields[0];
-            $stmt = $this->DBConWrite->prepare($sql);
-            $success = $stmt->execute($bind);
-            if (!$success && $stmt->errorCode()) {
-                $error = $stmt->errorInfo();
-                throw new Exception('MySQL(' . $error[1] . '): ' . $error[2] . ' table ' . self::getTableName(), $error[0]);
-            }
-        }
-        $class = get_class($this);
-        self::$runtimeCache[$class][$this->{$this->Properties [0]}] = $data;
+                $this->values['id'] = $id;
+                $this->loadedValues = $this->values;
+                $this->existInStorage = true;
+                break;
+            case true: // Update existing record
 
+                if (!$force) {
+                    $data = array_diff(array_intersect_key($data, $this->loadedValues), $this->loadedValues);
+                    if (empty($data)) {
+                        return true;
+                    }
+                }
+
+                $q = (new Query($this->DBConWrite));
+                $q->exceptionOnError = true;
+                $update = $q
+                    ->update(static::$TableName)
+                    ->set($data)
+                    ->where('id = ?', $this->__get('id'))
+                ;
+
+                if (!$update->execute(true)) {
+                    return false;
+                }
+                break;
+        }
+        return true;
+    }
+
+    /**
+     * @return bool
+     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
+     */
+    public function delete()
+    {
+        if (!$this->isExistInStorage()) {
+            return false;
+        }
+        $success = !!(new Query($this->DBConWrite))->deleteFrom(static::$TableName)->where('id = ?', $this->__get('id'))->execute();
+        if ($success) {
+            RuntimeCache::getInstance()->drop(static::class, $this->__get('id'));
+        }
         return $success;
     }
+    //</editor-fold>
 
     /**
-     * Loads model properties from array where keys are model properties
-     *
-     * @param array $data
-     *
      * @return bool
      */
-    public function populate(array $data = []): bool
+    public function isExistInStorage(): bool
     {
-        if (!is_array($data)) {
-            return false;
-        }
+        return !!$this->existInStorage;
+    }
 
-        foreach ($data as $Property => $value) {
-            if (!in_array($Property, $this->Properties)) {
+    /**
+     * @param array $data
+     * @param bool  $applyTransforms
+     */
+    public function populate(array $data, $applyTransforms = true)
+    {
+        foreach ($data as $tableFieldName => $value) {
+            if (!$this->isTableFieldExist($tableFieldName)) {
                 continue;
             }
-            $this->$Property = $value;
+            if ($applyTransforms && $transformations = $this->getReadTransforms($tableFieldName)) {
+                foreach ($transformations as $transformation => $options) {
+                    $value = Transform::apply_transform($transformation, $value, $options);
+                }
+            }
+            $this->values[$tableFieldName] = $value;
         }
-
-        return true;
     }
 
     /**
-     * @param $property
+     * @param bool $applyTransforms
      *
-     * @return false|int
+     * @return array|null
      */
-    protected function getPropertyId($property)
+    public function getDataForSave($applyTransforms = true)
     {
-        return array_search($property, $this->Properties);
+        $data = [];
+        foreach (array_keys(static::$propertiesMapping) as $tableFieldName) {
+            $value = null;
+            if (isset($this->values[$tableFieldName])) {
+                $value = $this->values[$tableFieldName];
+            }
+
+            if ($applyTransforms && $value !== null && $transformations = $this->getWriteTransforms($tableFieldName)) {
+                foreach ($transformations as $transformation => $options) {
+                    $value = Transform::apply_transform($transformation, $value, $options);
+                }
+            }
+            if (null === $value) {
+                continue;
+            }
+            $data[$tableFieldName] = $value;
+        }
+        return $data;
     }
 
     /**
-     * @param $field
-     *
-     * @return false|int
-     */
-    protected function getFieldId($field)
-    {
-        return array_search($field, $this->TFields);
-    }
-
-    /**
-     * @return bool
-     */
-    public function delete(): bool
-    {
-        $sql = 'DELETE FROM ' . self::getTableName() . ' WHERE ' . $this->TFields[0] . '=' . ':id';
-        $stmt = $this->DBConWrite->prepare($sql);
-
-        return $stmt->execute([':id' => $this->Id]);
-
-    }
-
-    /**
-     * @param bool $useFieldNames
-     * @param bool $applyTransform
-     *
      * @return array
+     * @throws Exception
      */
-    public function __toArray($useFieldNames = false, $applyTransform = false): array
+    public function __toArray()
     {
         $result = [];
-        foreach ($this->Properties as $index => $property) {
-            $key = $useFieldNames ? $this->TFields[$index] : $property;
-            $value = $this->$property;
-            if ($applyTransform && isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
-                $value = Transform::apply_transform($this->property2FieldTransform[$index], $value);
+        foreach ($this->values as $tableFieldName => $value) {
+            if (!$propertyName = $this->getFieldProperty($tableFieldName)) {
+                continue;
             }
-            $result[$key] = $value;
+            $result[$propertyName] = $value;
         }
-
         return $result;
     }
 
     /**
+     * @param string $fieldName
+     *
      * @return array
      */
-    public function getFields(): array
+    public function getReadTransforms(string $fieldName)
     {
-        return $this->TFields;
+        if (!array_key_exists($fieldName, static::$dataTransformRules) || !array_key_exists('read', static::$dataTransformRules[$fieldName])) {
+            return [];
+        }
+        return static::$dataTransformRules[$fieldName]['read'];
     }
 
     /**
-     * Iterator implementation
+     * @param string $fieldName
+     *
+     * @return array
      */
+    public function getWriteTransforms(string $fieldName)
+    {
+        if (!array_key_exists($fieldName, static::$dataTransformRules) || !array_key_exists('write', static::$dataTransformRules[$fieldName])) {
+            return [];
+        }
+        return static::$dataTransformRules[$fieldName]['write'];
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return bool
+     */
+    public function isPropertyExist(string $name): bool
+    {
+        return in_array($name, static::$propertiesMapping);
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return bool
+     */
+    public function isTableFieldExist(string $name): bool
+    {
+        return array_key_exists($name, static::$propertiesMapping);
+    }
+
+    /**
+     * @param string $propertyName
+     *
+     * @return string
+     * @throws Exception
+     */
+    public function getPropertyField(string $propertyName): string
+    {
+        if (!$this->isPropertyExist($propertyName)) {
+            throw new Exception('Property ' . $propertyName . ' not exist im model ' . static::class);
+        }
+        return array_flip(static::$propertiesMapping)[$propertyName];
+
+    }
+
+    /**
+     * @param string $tableFieldName
+     *
+     * @return string
+     * @throws Exception
+     */
+    public function getFieldProperty(string $tableFieldName): string
+    {
+        if (!$this->isTableFieldExist($tableFieldName)) {
+            throw new Exception('Table field ' . $tableFieldName . ' not exist im model ' . static::class);
+        }
+        return static::$propertiesMapping[$tableFieldName];
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return mixed
+     * @throws Exception
+     */
+    public function __get(string $name)
+    {
+        if ($this->isPropertyExist($name)) {
+            return $this->values[$this->getPropertyField($name)];
+        }
+        if ($this->isTableFieldExist($name)) {
+            return $this->values[$name];
+        }
+
+        switch ($name) {
+            case 'TableName':
+                return static::$TableName;
+            case 'TableFields':
+                return array_keys(static::$propertiesMapping);
+            case 'Properties':
+                return array_values(static::$propertiesMapping);
+            case 'SimpleObjectConfigNameRead':
+                return static::$SimpleObjectConfigNameRead;
+            case 'SimpleObjectConfigNameWrite':
+                return static::$SimpleObjectConfigNameWrite;
+        }
+        return null;
+    }
+
+    /**
+     * @param string $name
+     * @param mixed  $value
+     *
+     * @return bool|mixed
+     * @throws Exception
+     */
+    public function __set(string $name, $value)
+    {
+        if ($this->isPropertyExist($name)) {
+            return $this->values[$this->getPropertyField($name)] = $value;
+        }
+        if ($this->isTableFieldExist($name)) {
+            return $this->values[$name] = $value;
+        }
+        return false;
+    }
+
+
+    /**
+     * @param array $conditions
+     *
+     * @return Collection
+     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
+     */
+    public static function find(array $conditions)
+    {
+        $select = (new Query(Util::getConnection(static::$SimpleObjectConfigNameRead)))->from(static::$TableName);
+
+        $select->select(array_keys(static::$propertiesMapping));
+        foreach ($conditions as $condition => $value) {
+            switch (strtolower($condition)) {
+                case '(order)':
+                    $select->orderBy($value);
+                    break;
+                case '(limit)':
+                    $select->limit($value);
+                    break;
+                default:
+                    $select->where($condition, $value);
+                    break;
+            }
+        }
+        //echo $select->getQuery().PHP_EOL;die();
+        $result = new Collection();
+        foreach ($select as $_row) {
+            $entity = new static();
+            $entity->populate($_row);
+            $result->push($entity);
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $conditions
+     *
+     * @return static
+     * @throws Exception
+     * @throws \Envms\FluentPDO\Exception
+     */
+    public static function one(array $conditions)
+    {
+        return static::find($conditions)->getElement();
+    }
+
+
+//<editor-fold desc="Iterator implementation">
+
+    /**
+     *
+     */
+    public function rewind()
+    {
+        reset(static::$propertiesMapping);
+    }
 
     /**
      * @return mixed
      */
     public function current()
     {
-        $property = current($this->Properties);
-        if (in_array($property, $this->Properties)) {
-            return $this->{$property};
+        $property = current(static::$propertiesMapping);
+        if ($this->isPropertyExist($property)) {
+            try {
+                return $this->__get($property);
+            } catch (Exception $e) {
+            }
         }
-
-        return false;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function next()
-    {
-        $property = next($this->Properties);
-        if ($property) {
-            return $this->{$property};
-        }
-
         return false;
     }
 
@@ -347,31 +464,38 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
      */
     public function key()
     {
-        return current($this->Properties);
+        return key(static::$propertiesMapping);
     }
+
+    /**
+     * @return mixed
+     */
+    public function next()
+    {
+        $property = next(static::$propertiesMapping);
+        if ($this->isPropertyExist($property)) {
+            try {
+                return $this->__get($property);
+            } catch (Exception $e) {
+            }
+        }
+
+        return false;
+    }
+
 
     /**
      * @return bool
      */
     public function valid(): bool
     {
-        $var = $this->current() !== false;
-
-        return $var;
+        $key = $this->key();
+        return ($key !== null && $key !== false);
     }
 
-    /**
-     * @return void
-     */
-    public function rewind()
-    {
-        reset($this->Properties);
-    }
+//</editor-fold>
 
-    /**
-     * ArrayAccess implementation
-     */
-
+//<editor-fold desc="ArrayAccess implementation">
     /**
      * @param mixed $offset
      *
@@ -379,24 +503,22 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
      */
     public function offsetExists($offset)
     {
-        return (in_array($offset, $this->Properties) || in_array($offset, $this->TFields));
+        return ($this->isPropertyExist($offset) || $this->isTableFieldExist($offset));
     }
 
+    /**
+     * @param mixed $offset
+     *
+     * @return bool|mixed
+     */
     public function offsetGet($offset)
     {
-        if (in_array($offset, $this->TFields)) {
-            $offset = $this->Properties[array_search($offset, $this->TFields)];
-        }
-
-        if (in_array($offset, $this->Properties)) {
-            $index = array_search($offset, $this->Properties);
-            if (isset($this->property2FieldTransform[$index]) && !empty($this->property2FieldTransform[$index])) {
-                return Transform::apply_transform($this->property2FieldTransform[$index], $this->{$offset});
+        if ($this->isPropertyExist($offset) || $this->isTableFieldExist($offset)) {
+            try {
+                return $this->__get($offset);
+            } catch (Exception $e) {
             }
-
-            return $this->{$offset};
         }
-
         return false;
     }
 
@@ -408,13 +530,10 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
      */
     public function offsetSet($offset, $value)
     {
-        if (in_array($offset, $this->Properties)) {
-            return $this->$offset = $value;
+        try {
+            return $this->__set($offset, $value);
+        } catch (Exception $e) {
         }
-        if (in_array($offset, $this->TFields)) {
-            return $this->{$this->Properties[array_search($offset, $this->TFields)]} = $value;
-        }
-
         return false;
     }
 
@@ -427,73 +546,17 @@ abstract class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countab
     {
         return false;
     }
+//</editor-fold>
 
+//<editor-fold desc="Countable implementation">
     /**
-     * Countable implementation
      * @return int
      */
     public function count()
     {
-        return count($this->Properties);
+        return count(static::$propertiesMapping);
     }
+//</editor-fold>
 
-
-    /**
-     * @param $name
-     *
-     * @return mixed
-     */
-    function __get($name)
-    {
-        switch ($name) {
-            case 'noElement':
-                return $this->notExistInStorage;
-            case 'DBTable':
-                return self::getTableName();
-            case 'TFields':
-                return $this->TFields;
-            case 'Properties':
-                return $this->Properties;
-            case 'IdField':
-                return $this->TFields[0];
-            case 'SimpleObjectConfigNameRead':
-                return $this->SimpleObjectConfigNameRead;
-            case 'SimpleObjectConfigNameWrite':
-                return $this->SimpleObjectConfigNameWrite;
-            case 'property2FieldTransform':
-                return $this->property2FieldTransform;
-            case 'field2PropertyTransform':
-                return $this->field2PropertyTransform;
-        }
-
-        return null;
-    }
-
-
-    public static function clearCache($model = null)
-    {
-        if (is_null($model)) {
-            self::$runtimeCache = [];
-            return;
-        }
-        if (isset(self::$runtimeCache[$model])) {
-            unset(self::$runtimeCache[$model]);
-        }
-        return;
-    }
-
-    public static function getClassName()
-    {
-        return get_called_class();
-    }
-
-    /**
-     * @return string
-     */
-    public static function getTableName()
-    {
-        /** @noinspection PhpUndefinedFieldInspection */
-        return static::$DBTable;
-    }
 
 }
