@@ -1,28 +1,19 @@
 # SimpleObject
 
-Get SimpleObject: https://packagist.org/packages/sanovskiy/simple-object
+## Installation
+``` composer require sanovskiy/simple-object```
 
-# How to generate models
-```PHP
-require 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
-$config =  [
-            'dbcon'       => [
-                'host'     => 'localhost',
-                'user'     => 'user',
-                'password' => 'password',
-                'database' => 'my_database',
-            ],
-            'path_models' => __DIR__.'/Models/default',
-           ];
-SimpleObject::init($config);
-SimpleObject::reverseEngineerModels();
-```
-# About PKs
-Don't forget that table PK must be THE FIRST column in the table.
+## How to generate models
+See cli/generate-models-example.php
+
+## About PKs
+Don't forget that table PK must be named `id`
 
 # Model properties naming
 
 All models and model properties properties are named in CamelCase by splitting table name or column by underscores.
 I.e: field model_id become property ModelId. Column SomeLongFieldName become Somelongfieldname.
+
+Use robmorgan/phinx (https://github.com/cakephp/phinx) to make fully supported tables
 
 

@@ -77,8 +77,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         return true;
     }
 
-    //<editor-fold desc="***CRUD***">
-
     /**
      * Loads model data from storge
      *
@@ -184,7 +182,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         return array_flip(static::$propertiesMapping)[$propertyName];
 
     }
-    //</editor-fold>
 
     /**
      * @param string $name
@@ -242,6 +239,30 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
             return [];
         }
         return static::$dataTransformRules[$fieldName]['read'];
+    }
+
+    /**
+     * @return string
+     */
+    public static function getTableName(): string
+    {
+        return self::$TableName;
+    }
+
+    /**
+     * @return PDO
+     */
+    public static function getDBConRead()
+    {
+        return Util::getConnection(self::$SimpleObjectConfigNameRead);
+    }
+
+    /**
+     * @return PDO
+     */
+    public static function getDBConWrite()
+    {
+        return Util::getConnection(self::$SimpleObjectConfigNameWrite);
     }
 
     /**
@@ -361,7 +382,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         return true;
     }
 
-    //<editor-fold desc="__magics">
 
     /**
      * @param bool $applyTransforms
@@ -410,9 +430,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     {
         return !!$this->existInStorage;
     }
-    //</editor-fold>
-
-    //<editor-fold desc="Static search">
 
     /**
      * @return bool
@@ -446,9 +463,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         }
         return $result;
     }
-    //</editor-fold>
-
-    //<editor-fold desc="Iterator implementation">
 
     /**
      *
@@ -506,10 +520,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         return key(static::$propertiesMapping);
     }
 
-    //</editor-fold>
-
-    //<editor-fold desc="ArrayAccess implementation">
-
     /**
      * @param mixed $offset
      *
@@ -560,9 +570,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     {
         return false;
     }
-    //</editor-fold>
 
-    //<editor-fold desc="Countable implementation">
     /**
      * @return int
      */
@@ -570,7 +578,5 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     {
         return count(static::$propertiesMapping);
     }
-    //</editor-fold>
-
 
 }
