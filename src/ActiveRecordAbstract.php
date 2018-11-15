@@ -288,7 +288,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     {
         $select = (new Query(Util::getConnection(static::$SimpleObjectConfigNameRead)))->from(static::$TableName);
 
-        $select->select(array_keys(static::$propertiesMapping));
+        $select->select(array_keys(static::$propertiesMapping),true);
         foreach ($conditions as $condition => $value) {
             switch (strtolower($condition)) {
                 case '(order)':
