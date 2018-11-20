@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -23,28 +23,36 @@ class PDOStatement extends \PDOStatement
 {
 
     /**
-     * @var \sanovskiy\SimpleObject\PDO
+     * @var PDO
      */
     protected $pdo;
 
+
     /**
      * SimpleObject_PDOStatement constructor.
-     * @param \sanovskiy\SimpleObject\PDO $pdo
+     *
+     * @param PDO $pdo
      */
-    protected function __construct(\sanovskiy\SimpleObject\PDO $pdo)
+    protected function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
     }
 
     /**
      * @param mixed $bound_input_params
+     *
      * @return bool
      * @internal param array|null $input_parameters
      */
     public function execute($bound_input_params = NULL)
     {
         $start = $this->pdo->getMicro();
-        $result = parent::execute($bound_input_params);
+        try {
+            $result = parent::execute($bound_input_params);
+        } catch (\Exception $e) {
+            $this->pdo->log('Error: ' . $e->getMessage() . ' ' . $this->queryString, ['bind' => $bound_input_params]);
+            throw $e;
+        }
         $end = $this->pdo->getMicro();
         $this->pdo->registerTime($start, $end, $this->queryString);
         return $result;

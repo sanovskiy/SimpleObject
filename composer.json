@@ -1,6 +1,6 @@
 {
   "name": "sanovskiy/simple-object",
-  "version": "3.2.1",
+  "version": "5.0.4",
   "description": "Simple ORM for MySQL and MSSQL",
   "type": "library",
   "keywords": [
@@ -8,15 +8,22 @@
   ],
   "license": "Apache-2.0",
   "require": {
-    "php": ">=5.4.0",
-    "gossi/php-code-generator": "~0.4.1",
-    "symfony/console": "^4.0"
+    "php": ">=7.1",
+    "ext-pdo": "*",
+    "ext-json": "*",
+    "sanovskiy/traitlib": "^1.0",
+    "gossi/php-code-generator": ">=0.5",
+    "envms/fluentpdo": "^2.1",
+    "league/climate": "^3.4"
+  },
+  "suggest": {
+    "monolog/monolog": "Allows logging from SimpleObject core functions",
+    "robmorgan/phinx": "Allows creating migrations"
   },
   "authors": [
     {
       "name": "Pavel Terentyev",
       "email": "pavel.terentyev@gmail.com",
-      "homepage": "http://terentyev.info",
       "role": "Developer"
     },
     {
@@ -27,7 +34,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "sanovskiy\\SimpleObject\\": "src"
+      "Sanovskiy\\SimpleObject\\": "src"
     }
   }
 }

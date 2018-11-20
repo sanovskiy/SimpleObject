@@ -1,4 +1,4 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
 
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
@@ -43,7 +43,8 @@ class Util
         'path_models'      => '',
         'models_namespace' => 'sanovsliy\\SimpleObject\\models\\default\\',
         'read_connection'  => null,
-        'write_connection' => null
+        'write_connection' => null,
+        'sql_logfile'    => null
     ];
 
     /**
@@ -55,7 +56,7 @@ class Util
 
     /**
      * Database connection
-     * @var null|\sanovskiy\SimpleObject\PDO
+     * @var PDO[]
      */
     static private $connections = [
         'default' => null
@@ -86,7 +87,7 @@ class Util
 
     /**
      * @param string $configName
-     * @return \sanovskiy\SimpleObject\PDO
+     * @return PDO
      */
     public static function getConnection($configName = 'default')
     {
@@ -115,6 +116,17 @@ class Util
                     break;
             }
             self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
+            $logfile = self::getSettingsValue('sql_logfile',$configName);
+
+            if ($logfile && file_exists(dirname($logfile)) && is_writeable(dirname($logfile))){
+                try {
+                    $logger = new \Monolog\Logger('SO Logger');
+                    $logger->pushHandler(new \Monolog\Handler\StreamHandler($logfile));
+                    self::$connections[$configName]->setLogger($logger);
+                } catch (\Exception $e) {
+
+                }
+            }
         }
 
         return self::$connections[$configName];

@@ -1,4 +1,7 @@
-<?php namespace sanovskiy\SimpleObject;
+<?php namespace Sanovskiy\SimpleObject;
+
+use Monolog\Logger;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -17,7 +20,7 @@
  */
 
 /**
- * Class \sanovskiy\SimpleObject\PDO
+ * Class \Sanovskiy\SimpleObject\PDO
  */
 class PDO extends \PDO
 {
@@ -28,16 +31,34 @@ class PDO extends \PDO
     protected $longest_query_time = 0;
 
     /**
-     * sanovskiy\SimpleObject\PDO constructor.
-     * @param $dsn
+     * @var Logger
+     */
+    protected $logger = null;
+
+    /**
+     * Sanovskiy\SimpleObject\PDO constructor.
+     *
+     * @param        $dsn
      * @param string $username
      * @param string $password
-     * @param array $driver_options
+     * @param array  $driver_options
      */
     public function __construct($dsn, $username = '', $password = '', $driver_options = array())
     {
         parent::__construct($dsn, $username, $password, $driver_options);
-        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('sanovskiy\SimpleObject\PDOStatement', array($this)));
+        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('Sanovskiy\SimpleObject\PDOStatement', array($this)));
+    }
+
+    public function setLogger(Logger $logger)
+    {
+        $this->logger = $logger;
+    }
+
+    public function log(string $string, array $context = [])
+    {
+        if ($this->logger instanceof Logger){
+            $this->logger->info($string,$context);
+        }
     }
 
     /**
@@ -46,10 +67,10 @@ class PDO extends \PDO
     public function getUsageInfo()
     {
         return [
-            'TotalQueries' => $this->queries_count,
+            'TotalQueries'     => $this->queries_count,
             'TotalQueriesTime' => $this->total_query_time,
             'LongestQueryTime' => $this->longest_query_time,
-            'LongestQuery' => $this->longest_query
+            'LongestQuery'     => $this->longest_query
         ];
     }
 
@@ -61,7 +82,7 @@ class PDO extends \PDO
         return microtime(true);
     }
 
-    public function registerTime($start, $end, $query = '')
+    public function registerTime(float $start, float $end, string $query = '')
     {
         $this->queries_count++;
         $time = $end - $start;
@@ -70,10 +91,12 @@ class PDO extends \PDO
             $this->longest_query_time = $time;
             $this->longest_query = $query;
         }
+        $this->log($query, ['total_time' => $time, 'start' => $start, 'end' => $end]);
     }
 
     /**
      * @param string $statement
+     *
      * @return int
      */
     public function exec($statement)
@@ -85,10 +108,15 @@ class PDO extends \PDO
         return $result;
     }
 
+    /** @noinspection PhpSignatureMismatchDuringInheritanceInspection */
     /**
+     * Overloads parent query method to add some profiling
+     * Some IDEs can mark declaration of this method as incopatible with parent. That's not true.
+     *
      * @param string $statement
-     * @param int $mode
-     * @param null $arg3
+     * @param int    $mode
+     * @param null   $arg3
+     *
      * @return \PDOStatement
      */
     public function query($statement, $mode = \PDO::ATTR_DEFAULT_FETCH_MODE, $arg3 = null)
