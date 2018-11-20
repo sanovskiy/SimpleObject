@@ -27,4 +27,3 @@ try {
 } catch (Exception $e) {
     die('Something went wrong. '.$e->getMessage());
 }
-

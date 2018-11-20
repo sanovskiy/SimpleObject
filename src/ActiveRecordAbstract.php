@@ -62,6 +62,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         $this->DBConWrite = Util::getConnection(static::$SimpleObjectConfigNameWrite);
         if (is_null($id)) {
             $this->Id = null;
+
             return;
         }
 
@@ -72,7 +73,9 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     /**
      * @return bool
      */
+
     protected function init(): bool
+
     {
         return true;
     }
@@ -567,6 +570,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                 return $this->__get($property);
             } catch (Exception $e) {
             }
+
         }
 
         return false;

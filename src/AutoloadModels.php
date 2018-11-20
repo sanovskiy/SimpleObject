@@ -56,7 +56,6 @@ class AutoloadModels
         return true;
     }
 
-
     /**
      * @param string $classname
      *

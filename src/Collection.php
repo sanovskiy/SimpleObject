@@ -378,5 +378,4 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     }
     //</editor-fold>
 
-
 }

@@ -13,11 +13,11 @@ Don't forget that table PK must be named `id`
 
 ## Model properties naming
 
+
 All models and model properties properties are named in CamelCase by splitting table name or column by underscores.
 I.e: field model_id become property ModelId. Column SomeLongFieldName become Somelongfieldname.
 
 Use robmorgan/phinx (https://github.com/cakephp/phinx) to make fully supported tables
-
 
 ## Using models
 
@@ -91,3 +91,4 @@ Custom transformations must start from 'custom_' and must contain proper callbac
 Callback function first parameter must be $value.
 
 There are some built in transformations like tinyint(1) to bool, datetime to unix timestamp and others. See Transform class.
+
