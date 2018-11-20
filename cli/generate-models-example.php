@@ -10,6 +10,7 @@ use Sanovskiy\SimpleObject\Util;
 try {
     Util::init([
         'dbcon' => [
+            'driver' => 'mysql',
             'host' => 'localhost',
             'user' => 'root',
             'password' => '',

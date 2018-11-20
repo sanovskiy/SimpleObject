@@ -2,4 +2,6 @@
 vendor/
 models/
 composer.lock
-cli/testautoload.php
+cli/*
+!cli/generate-models-example.php
+

@@ -1,6 +1,6 @@
 {
   "name": "sanovskiy/simple-object",
-  "version": "4.0.4",
+  "version": "5.0.3",
   "description": "Simple ORM for MySQL and MSSQL",
   "type": "library",
   "keywords": [
@@ -8,13 +8,17 @@
   ],
   "license": "Apache-2.0",
   "require": {
-    "php": ">=7.0",
+    "php": ">=7.1",
     "ext-pdo": "*",
     "ext-json": "*",
     "sanovskiy/traitlib": "^1.0",
     "gossi/php-code-generator": ">=0.5",
-    "symfony/console": ">=4.0",
-    "monolog/monolog": "^1.23"
+    "envms/fluentpdo": "^2.1",
+    "league/climate": "^3.4"
+  },
+  "suggest": {
+    "monolog/monolog": "Allows logging from SimpleObject core functions",
+    "robmorgan/phinx": "Allows creating migrations"
   },
   "authors": [
     {

@@ -15,27 +15,19 @@
  * limitations under the License.
  *
  */
-
 class Transform
 {
-    public static function apply_transform($transform, $value)
+    public static function apply_transform(string $transform, $value, $options = [])
     {
-        if (is_array($transform)) {
-            foreach ($transform as $rule) {
-                $value = self::apply_transform($rule, $value);
-            }
-            return $value;
-        }
-        $params = explode("|", $transform);
-        $func = $params[0];
-        if (method_exists(__CLASS__, $func)) {
-            $value = call_user_func([__CLASS__, $func], $value, $params);
+        if (method_exists(static::class, $transform)) {
+            $value = call_user_func([static::class, $transform], $value, $options);
         }
         return $value;
     }
 
     /**
      * @param $value
+     *
      * @return mixed
      */
     public static function urlCorrect($value)
@@ -47,6 +39,7 @@ class Transform
 
     /**
      * @param $value
+     *
      * @return int|null
      */
     public static function date2time($value)
@@ -58,22 +51,23 @@ class Transform
     }
 
     /**
-     * @param $value
-     * @param array $params
+     * @param       $value
+     * @param array $options
+     *
      * @return bool|null|string
      */
-    public static function time2date($value, $params = [])
+    public static function time2date(int $value, array $options = [])
     {
         if (is_null($value)) {
             return null;
         }
-        if (!is_array($params)){
-            $params = [$params];
+        if (!is_array($options)) {
+            $options = [$options];
         }
-        if (!isset($params[1])) {
+        if (!isset($options[1])) {
             $format = 'Y-m-d H:i:s';
         } else {
-            $format = $params [1];
+            $format = $options [1];
         }
         /*if (strtotime($value)>0){
             $value = strtotime($value);
@@ -85,13 +79,14 @@ class Transform
     }
 
     /**
-     * @param $value
-     * @param array $params
+     * @param integer|float $value
+     * @param array         $options
+     *
      * @return float
      */
-    public static function div($value, $params = array())
+    public static function div($value, array $options = [])
     {
-        $divider = $params [1];
+        $divider = $options [1];
         if ($divider == 0) {
             return $value;
         }
@@ -99,36 +94,40 @@ class Transform
     }
 
     /**
-     * @param $value
-     * @param array $params
+     * @param       $value
+     * @param array $options
+     *
      * @return mixed
      */
-    public static function mult($value, $params = array())
+    public static function mult($value, $options = [])
     {
-        $multiplier = $params [1];
+        $multiplier = $options[1];
         return ($value * $multiplier);
     }
 
     /**
-     * @param $value
+     * @param string $value
+     *
      * @return bool
      */
-    public static function pgbool2bool($value)
+    public static function pgbool2bool(string $value): bool
     {
         return 't' === strtolower($value);
     }
 
     /**
-     * @param $value
+     * @param bool $value
+     *
      * @return string
      */
-    public static function bool2pgbool($value)
+    public static function bool2pgbool(bool $value)
     {
-        return $value?'t':'f';
+        return $value ? 't' : 'f';
     }
 
     /**
      * @param $value
+     *
      * @return bool
      */
     public static function digit2boolean($value)
@@ -138,33 +137,37 @@ class Transform
 
     /**
      * @param $value
+     *
      * @return string
      */
-    public static function digit2textboolean($value)
+    public static function digit2textboolean($value): string
     {
-        return (0 >= $value)?'false':'true';
+        return (0 >= $value) ? 'false' : 'true';
     }
 
     /**
-     * @param $value
+     * @param bool $value
+     *
      * @return int
      */
-    public static function boolean2digit($value)
+    public static function boolean2digit(bool $value)
     {
-        return $value?1:0;
+        return $value ? 1 : 0;
     }
 
     /**
-     * @param $value
+     * @param bool $value
+     *
      * @return string
      */
-    public static function boolean2text($value)
+    public static function boolean2text(bool $value): string
     {
-        return $value?'true':'false';
+        return $value ? 'true' : 'false';
     }
 
     /**
      * @param $value
+     *
      * @return string
      */
     public static function jsonize($value)
@@ -173,41 +176,28 @@ class Transform
     }
 
     /**
-     * @param $value
+     * @param string $value
+     *
      * @return mixed
      */
-    public static function unjsonize($value)
+    public static function unjsonize(string $value)
     {
         return json_decode($value, true);
     }
 
     /**
-     * @param $value
-     * @param $params
-     * @return mixed
-     */
-    public static function SOData($value, $params)
-    {
-        $className = $params [1];
-        if (!class_exists($className) || !($className instanceof ActiveRecordAbstract)) {
-            return $value;
-        }
-        /* @var \Sanovskiy\SimpleObject\ActiveRecordAbstract $instance */
-        $instance = new $className($value);
-        return $instance->__toArray();
-    }
-
-    /**
      * @param $val
+     *
      * @return string
      */
     public static function string($val)
     {
-        return (string)$val;
+        return (string) $val;
     }
 
     /**
      * @param $val
+     *
      * @return int
      */
     public static function intVal($val)
@@ -216,12 +206,14 @@ class Transform
     }
 
     /**
-     * @param $string
-     * @param bool $firstCharUpper
+     * @param string $string
+     * @param array  $options
+     *
      * @return mixed|string
      */
-    static public function CCName($string, $firstCharUpper = true)
+    static public function CCName(string $string, $options = [])
     {
+        $firstCharUpper = isset($options[0]) ? !!$options[0] : true;
         $s = strtolower($string);
         $s = str_replace(array('_', '-', '/'), array(' ', ' ', '_'), $s);
         $s = ucwords($s);
@@ -235,11 +227,21 @@ class Transform
         return $s;
     }
 
+    /**
+     * @param $data
+     *
+     * @return string
+     */
     public static function serialize($data)
     {
         return serialize($data);
     }
 
+    /**
+     * @param $data
+     *
+     * @return mixed
+     */
     public static function unserialize($data)
     {
         return unserialize($data);

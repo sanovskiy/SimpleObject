@@ -17,9 +17,7 @@
  *
  */
 
-use Sanovskiy\Traits\ArrayAccess;
-use Sanovskiy\Traits\Countable;
-use Sanovskiy\Traits\Iterator;
+use Sanovskiy\Traits\{ArrayAccess, Countable, Iterator};
 
 /**
  * Class Collection
@@ -29,8 +27,8 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 {
     use Iterator, ArrayAccess, Countable;
 
-    const ERROR_LOCKED = 'Collection is locked. You can\'t modify elements list';
-    const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
+    const ERROR_LOCKED          = 'Collection is locked. You can\'t modify elements list';
+    const ERROR_CLASS_MISMATCH  = 'New object\'s class didn\'t match collection\'s class';
     const ERROR_CLASS_NOT_FOUND = 'Class not found';
 
     protected $records = [];
@@ -38,63 +36,6 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     protected $isLocked = false;
     protected $isUnlockable = true;
-
-    /**
-     * @var Filter
-     */
-    protected $filters = null;
-
-    /**
-     * @param                                                  $model_name
-     * @param PDOStatement|Filter|array $data
-     *
-     * @return Collection
-     * @throws Exception
-     */
-    static function factory($model_name, $data = null): Collection
-    {
-        if (!class_exists($model_name)) {
-            throw new Exception(self::ERROR_CLASS_NOT_FOUND . ': ' . $model_name);
-        }
-        $collection = new self;
-        $collection->setClassName($model_name);
-        if ($data instanceof PDOStatement) {
-            while ($row = $data->fetch()) {
-                /*  @var ActiveRecordAbstract $object */
-                $object = new $model_name;
-                $object->load($row);
-                $collection->push($object);
-            }
-        } elseif ($data instanceof Filter || is_null($data)) {
-            /*  @var ActiveRecordAbstract $object */
-            $object = new $model_name;
-            if (is_null($data)) {
-                $data = Filter::getNewInstance();
-            }
-
-            /** @noinspection PhpUndefinedFieldInspection */
-            /** @noinspection PhpUndefinedMethodInspection */
-            $data->build(false, $model_name::getTableName(), $object->IdField);
-            $stmt = Util::getConnection($object->SimpleObjectConfigNameRead)->prepare($data->getSQL());
-            if (!$stmt->execute($data->getBind())) {
-                $PDOError = $stmt->errorInfo();
-                throw new Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
-            }
-            $collection = self::factory($model_name, $stmt);
-            $collection->setFilters($data);
-        }
-        return $collection;
-    }
-
-    /**
-     * @param Filter $filters
-     *
-     * @return void
-     */
-    public function setFilters(Filter $filters)
-    {
-        $this->filters = $filters;
-    }
 
     //<editor-fold desc="Collection interface">
 
@@ -172,7 +113,6 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         $this->className = $name;
         return $this;
     }
-    //</editor-fold>
 
     /**
      * Returns $n-th element
@@ -185,6 +125,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     {
         return isset($this->records[$n]) ? $this->records[$n] : null;
     }
+    //</editor-fold>
 
     //<editor-fold desc="Random access">
     private $returnedIdList = [];
@@ -434,64 +375,6 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
             return implode(', ', $result);
         }
         return null;
-    }
-    //</editor-fold>
-
-    //<editor-fold desc="Paging">
-    /**
-     * @return int
-     * @throws Exception
-     */
-    public function getPage(): int
-    {
-        if (!($this->filters instanceof Filter)) {
-            throw new Exception('Collection is not filtered');
-        }
-        if (!$this->filters->isPaged()) {
-            throw new Exception('Collection is not paged');
-        }
-        $offset = $this->filters->getOffset();
-        $limit = $this->filters->getLimit();
-        return intval($offset / $limit) + 1;
-    }
-
-    /**
-     * @return int
-     * @throws Exception
-     */
-    public function getTotalPagedCount(): int
-    {
-        if (!($this->filters instanceof Filter)) {
-            throw new Exception('Collection is not filtered');
-        }
-        if (!$this->filters->isPaged()) {
-            throw new Exception('Collection is not paged');
-        }
-        $object = new $this->className;
-        /** @noinspection PhpUndefinedFieldInspection */
-        $this->filters->build(true, $object->DBTable, $object->IdField);
-        $stmt = Util::getConnection($object->SimpleObjectConfigNameRead)->prepare($this->filters->getSQL());
-        if (!$stmt->execute($this->filters->getBind())) {
-            $PDOError = $stmt->errorInfo();
-            throw new Exception('PDOStatement failed to execute query: ' . $stmt->queryString . ' ' . $PDOError[2]);
-        }
-
-        return (int)$stmt->fetchColumn();
-    }
-
-    /**
-     * @return int
-     * @throws Exception
-     */
-    public function getRecordsCountOnPage(): int
-    {
-        if (!($this->filters instanceof Filter)) {
-            throw new Exception('Collection is not filtered');
-        }
-        if (!$this->filters->isPaged()) {
-            throw new Exception('Collection is not paged');
-        }
-        return $this->filters->getLimit();
     }
     //</editor-fold>
 
