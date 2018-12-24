@@ -108,7 +108,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
             RuntimeCache::getInstance()->put(static::class, $this->Id, $result);
             $this->loadedValues = $result;
         }
-        $this->populate($result);
+        $this->populate($result,true,false);
         return true;
     }
 
@@ -140,7 +140,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                 throw new Exception('Missing fields ' . implode(', ', $missingFields));
             }
             $entity = new static();
-            $entity->populate($row);
+            $entity->populate($row,true,false);
             $collection->push($entity);
 
         }
@@ -391,7 +391,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         $result = new Collection();
         foreach ($select as $_row) {
             $entity = new static();
-            $entity->populate($_row);
+            $entity->populate($_row,true,false);
             $result->push($entity);
         }
         return $result;
@@ -503,7 +503,8 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      */
     public function isExistInStorage(): bool
     {
-        return !!$this->existInStorage;
+        //return !!$this->existInStorage;
+        return !empty($this->loadedValues);
     }
 
     /**
