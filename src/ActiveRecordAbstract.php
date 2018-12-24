@@ -62,7 +62,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         $this->DBConWrite = Util::getConnection(static::$SimpleObjectConfigNameWrite);
         if (is_null($id)) {
             $this->Id = null;
-
             return;
         }
 
@@ -284,9 +283,13 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      *
      * @param array $data
      * @param bool  $applyTransforms
+     * @param bool  $isNewRecord
      */
-    public function populate(array $data, $applyTransforms = true)
+    public function populate(array $data, $applyTransforms = true, $isNewRecord = false)
     {
+        if (!$isNewRecord){
+            $this->loadedValues = $data;
+        }
         foreach ($data as $tableFieldName => $value) {
             if (!static::isTableFieldExist($tableFieldName)) {
                 continue;
