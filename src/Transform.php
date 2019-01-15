@@ -22,15 +22,15 @@ class Transform
         if (method_exists(static::class, $transform)) {
             return call_user_func([static::class, $transform], $value, $options);
         }
-        if (preg_match('/^custom_/iu',$transform)) {
+        if (preg_match('/^custom_/iu', $transform)) {
             if (array_key_exists('callback', $options) && is_callable($options['callback'])) {
                 $callback_options = [$value];
 
                 if (array_key_exists('callback_options', $options) && is_array($options['callback_options'])) {
-                    $callback_options = array_merge($callback_options,$options['callback_options']);
+                    $callback_options = array_merge($callback_options, $options['callback_options']);
                 }
 
-                return call_user_func_array($options['callback'],$callback_options);
+                return call_user_func_array($options['callback'], $callback_options);
             }
         }
         return $value;
@@ -174,6 +174,11 @@ class Transform
     public static function boolean2text(bool $value): string
     {
         return $value ? 'true' : 'false';
+    }
+
+    public static function text2boolean(bool $value): string
+    {
+        return 'true' === strtolower($value);
     }
 
     /**

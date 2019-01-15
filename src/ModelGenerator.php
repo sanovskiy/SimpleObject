@@ -56,10 +56,13 @@ class ModelGenerator
             $this->output->out('Reverse engineering database ' . $dbSettings['database']);
 
             $this->prepareDirs();
+            $bind = [];
             switch (strtolower($dbSettings['driver'])) {
+                case 'pgsql':
+                    $sql = 'select schemaname,tablename from pg_tables where schemaname=\'public\'';
+                    break;
                 case 'mysql':
                     $sql = 'SHOW TABLES FROM `' . $dbSettings['database'] . '`';
-                    $bind = [];
                     break;
                 case 'sqlsrv':
                 case 'odbc':
@@ -84,6 +87,11 @@ class ModelGenerator
             $this->output->out('Generating files:');
             foreach ($tables as $tableRow) {
                 switch (strtolower($dbSettings['driver'])) {
+                    case 'pgsql':
+                        $tableName = $tableRow[1];
+                        $tableSchema = $tableRow[0];
+                        $CCName = Transform::CCName($tableName);
+                        break;
                     case 'mysql':
                         $tableName = $tableRow[0];
                         $tableSchema = '';
@@ -93,7 +101,7 @@ class ModelGenerator
                     case 'odbc':
                         $tableName = $tableRow[0];
                         $tableSchema = $tableRow[1];
-                        $CCName = Transform::CCName($tableRow[0]);
+                        $CCName = Transform::CCName($tableName);
                         break;
                     default:
                         throw new \Exception('Unsupported driver ' . $dbSettings['driver']);
@@ -172,7 +180,7 @@ class ModelGenerator
                 $dataTransformRules = [];
                 $colVal = [];
 
-                $driver = Util::getSettingsValue('driver', $this->configName);
+                //$driver = Util::getSettingsValue('driver', $this->configName);
 
                 $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table';
 
@@ -181,19 +189,19 @@ class ModelGenerator
                     ':database' => $dbSettings['database']
                 ];
 
-                switch (strtolower($driver)) {
+                switch (strtolower($dbSettings['driver'])) {
                     default:
                     case 'mysql':
                         $sql .= ' AND table_schema = :database';
                         break;
                     case 'sqlsrv':
+                    case 'pgsql':
                     case 'odbc':
                         $sql .= ' AND table_schema = :schema AND table_catalog = :database';
                         $bind[':schema'] = $tableSchema;
                         break;
                 }
-                //var_dump($bind);
-                //echo $sql;die();
+                //var_dump([$dbSettings['driver'],$bind]);echo $sql;die();
                 $stmt = Util::getConnection($this->configName)->prepare($sql);
                 $stmt->execute($bind);
 
@@ -202,7 +210,10 @@ class ModelGenerator
                     var_dump($fields);
                     die();
                 }*/
+
                 foreach ($fields as $num => $_row) {
+
+                    $_row = array_change_key_case($_row,CASE_UPPER);
                     $colName = $_row['COLUMN_NAME'];
                     $propertiesMapping[$colName] = Transform::CCName($colName);
 
@@ -223,10 +234,18 @@ class ModelGenerator
                             break;
                         case 'tinyint':
                         case 'bit':
-                            $dataTransformRules[$colName] = [
-                                'read'  => ['digit2boolean' => []],
-                                'write' => ['boolean2digit' => []]
-                            ];
+                        case 'boolean':
+                            if ($_row['DATA_TYPE']==='boolean'){
+                                $dataTransformRules[$colName] = [
+                                    'read'  => ['text2boolean' => []],
+                                    'write' => ['boolean2text' => []]
+                                ];
+                            } else{
+                                $dataTransformRules[$colName] = [
+                                    'read'  => ['digit2boolean' => []],
+                                    'write' => ['boolean2digit' => []]
+                                ];
+                            }
                             $colVal[$colName] = 'boolean';
                             break;
                         case 'int':
