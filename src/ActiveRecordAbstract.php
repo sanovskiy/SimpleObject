@@ -108,7 +108,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
             RuntimeCache::getInstance()->put(static::class, $this->Id, $result);
             $this->loadedValues = $result;
         }
-        $this->populate($result,true,false);
+        $this->populate($result, true, false);
         return true;
     }
 
@@ -140,7 +140,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                 throw new Exception('Missing fields ' . implode(', ', $missingFields));
             }
             $entity = new static();
-            $entity->populate($row,true,false);
+            $entity->populate($row, true, false);
             $collection->push($entity);
 
         }
@@ -190,9 +190,15 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     public function __get(string $name)
     {
         if (static::isPropertyExist($name)) {
+            if (!array_key_exists(static::getPropertyField($name), $this->values)) {
+                return null;
+            }
             return $this->values[static::getPropertyField($name)];
         }
         if (static::isTableFieldExist($name)) {
+            if (!array_key_exists($name, $this->values)) {
+                return null;
+            }
             return $this->values[$name];
         }
 
@@ -287,7 +293,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      */
     public function populate(array $data, $applyTransforms = true, $isNewRecord = false)
     {
-        if (!$isNewRecord){
+        if (!$isNewRecord) {
             $this->loadedValues = $data;
         }
         foreach ($data as $tableFieldName => $value) {
@@ -391,7 +397,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         $result = new Collection();
         foreach ($select as $_row) {
             $entity = new static();
-            $entity->populate($_row,true,false);
+            $entity->populate($_row, true, false);
             $result->push($entity);
         }
         return $result;

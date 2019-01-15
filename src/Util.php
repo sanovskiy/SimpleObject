@@ -106,6 +106,13 @@ class Util
                     }
                     $dsn .= 'Database=' . $dbSettings['database'];
                     break;
+                case 'pgsql':
+                    $dsn = $dbSettings['driver'] . ':host=' . $dbSettings['host'] . ';';
+                    if (!empty($dbSettings['port'])) {
+                        $dsn .= 'port=' . $dbSettings['port'] . ';';
+                    }
+                    $dsn .= 'dbname=' . $dbSettings['database'];
+                    break;
                 default:
                 case 'mysql':
                     $dsn = $dbSettings['driver'] . ':host=' . $dbSettings['host'] . ';';
