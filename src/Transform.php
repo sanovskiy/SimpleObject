@@ -75,10 +75,16 @@ class Transform
         if (!is_array($options)) {
             $options = [$options];
         }
-        if (!isset($options[1])) {
+
+        $format = null;
+        if (isset($options['format'])) {
+            $format = $options['format'];
+        } elseif (isset($options[1])) {
+            $format = $options[1];
+        }
+
+        if ($format === null) {
             $format = 'Y-m-d H:i:s';
-        } else {
-            $format = $options [1];
         }
         /*if (strtotime($value)>0){
             $value = strtotime($value);
