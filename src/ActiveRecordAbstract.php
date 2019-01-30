@@ -361,7 +361,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     /**
      * @param array $conditions
      *
-     * @return Collection<static>
+     * @return Collection<static>|array
      * @throws Exception
      * @throws \Envms\FluentPDO\Exception
      */
@@ -370,6 +370,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         $select = (new Query(Util::getConnection(static::$SimpleObjectConfigNameRead)))->from(static::$TableName);
 
         $select->select(array_keys(static::$propertiesMapping), true);
+        $simulate = false;
         foreach ($conditions as $condition => $value) {
             switch (strtolower($condition)) {
                 case '(order)':
@@ -386,6 +387,15 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                     break;
                 case '(group)':
                     continue;
+                case '(null)':
+                    $select->where($value.' IS NULL');
+                    continue;
+                case '(not null)':
+                    $select->where($value.' IS NOT NULL');
+                    continue;
+                case '(!!simulate)':
+                    $simulate = true;
+                    break;
                 /*$select->groupBy($value);
                 break;*/
                 default:
@@ -393,7 +403,12 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                     break;
             }
         }
-        //echo $select->getQuery().PHP_EOL;die();
+        if ($simulate){
+            return [
+                'query'=> $select->getQuery(),
+                'params'=>$select->getParameters()
+            ];
+        }
         $result = new Collection();
         foreach ($select as $_row) {
             $entity = new static();
