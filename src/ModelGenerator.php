@@ -213,7 +213,7 @@ class ModelGenerator
 
                 foreach ($fields as $num => $_row) {
 
-                    $_row = array_change_key_case($_row,CASE_UPPER);
+                    $_row = array_change_key_case($_row, CASE_UPPER);
                     $colName = $_row['COLUMN_NAME'];
                     $propertiesMapping[$colName] = Transform::CCName($colName);
 
@@ -223,24 +223,30 @@ class ModelGenerator
                         }
                     }
                     switch ($_row['DATA_TYPE']) {
-                        case 'timestamp':
                         case 'date':
+                            $dataTransformRules[$colName] = [
+                                'read'  => ['date2time' => []],
+                                'write' => ['time2date' => ['format' => 'Y-m-d']]
+                            ];
+                            $colVal[$colName] = 'integer';
+                            break;
+                        case 'timestamp':
                         case 'datetime':
                             $dataTransformRules[$colName] = [
                                 'read'  => ['date2time' => []],
-                                'write' => ['time2date' => []]
+                                'write' => ['time2date' => ['format' => 'Y-m-d H:i:s']]
                             ];
                             $colVal[$colName] = 'integer';
                             break;
                         case 'tinyint':
                         case 'bit':
                         case 'boolean':
-                            if ($_row['DATA_TYPE']==='boolean'){
+                            if ($_row['DATA_TYPE'] === 'boolean') {
                                 $dataTransformRules[$colName] = [
                                     'read'  => ['text2boolean' => []],
                                     'write' => ['boolean2text' => []]
                                 ];
-                            } else{
+                            } else {
                                 $dataTransformRules[$colName] = [
                                     'read'  => ['digit2boolean' => []],
                                     'write' => ['boolean2digit' => []]
