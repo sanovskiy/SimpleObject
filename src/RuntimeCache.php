@@ -19,6 +19,8 @@ class RuntimeCache implements Singleton
 {
     use \Sanovskiy\Traits\Patterns\Singleton;
 
+    protected $disabled = false;
+
     /**
      * @var array
      */
@@ -31,6 +33,9 @@ class RuntimeCache implements Singleton
      */
     public function put(string $classname, string $key, array $data)
     {
+        if ($this->disabled){
+            return;
+        }
         $this->cache[$classname][$key] = $data;
     }
 
@@ -42,7 +47,7 @@ class RuntimeCache implements Singleton
      */
     public function get(string $classname, $key)
     {
-        if (array_key_exists($classname, $this->cache) && array_key_exists($key, $this->cache[$classname])) {
+        if (!$this->disabled && array_key_exists($classname, $this->cache) && array_key_exists($key, $this->cache[$classname])) {
             return $this->cache[$classname][$key];
         }
         return false;
@@ -57,5 +62,25 @@ class RuntimeCache implements Singleton
         if (array_key_exists($classname, $this->cache) && array_key_exists($key, $this->cache[$classname])) {
             unset($this->cache[$classname][$key]);
         }
+    }
+
+    public function clearAll()
+    {
+        $this->cache = [];
+    }
+
+    public function toggle()
+    {
+        $this->disabled = !$this->disabled;
+    }
+
+    public function disable()
+    {
+        $this->disabled = true;
+    }
+
+    public function enable()
+    {
+        $this->disabled = false;
     }
 }
