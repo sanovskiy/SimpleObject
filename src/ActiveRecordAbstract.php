@@ -51,7 +51,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      * @param int|null $id
      *
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     function __construct(?int $id = null)
     {
@@ -80,13 +79,36 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     }
 
     /**
+     * @return Query
+     */
+    protected static function getReadQuery()
+    {
+        $q = (new Query(Util::getConnection(static::$SimpleObjectConfigNameRead)));
+        $q->throwExceptionOnError(true);
+        $q->convertReadTypes(true);
+
+        return $q;
+    }
+
+    /**
+     * @return Query
+     */
+    protected static function getWriteQuery()
+    {
+        $q = (new Query(Util::getConnection(static::$SimpleObjectConfigNameWrite)));
+        $q->throwExceptionOnError(true);
+        $q->convertWriteTypes(true);
+
+        return $q;
+    }
+
+    /**
      * Loads model data from storge
      *
      * @param bool $forceLoad
      *
      * @return bool
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     protected function load($forceLoad = false): bool
     {
@@ -94,15 +116,19 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
             return false;
         }
         if (($forceLoad || !($result = RuntimeCache::getInstance()->get(static::class, $this->Id)))) {
-            $query = (new Query($this->DBConRead))->from(static::$TableName);
-            $query
-                ->select(array_keys(static::$propertiesMapping), true)
-                ->where('id = ?', $this->__get($this->getFieldProperty('id')))
-            ;
-            if (!$result = $query->fetch()) {
-                $this->existInStorage = false;
-                return false;
-                //throw new Exception('Error loading data for ' . static::class . ' (Id:' . $this->__get('id') . ')');
+            try {
+                $query = static
+                    ::getReadQuery()
+                    ->from(static::$TableName)
+                    ->select(array_keys(static::$propertiesMapping), true)
+                    ->where('id = ?', $this->__get($this->getFieldProperty('id')))
+                ;
+                if (!$result = $query->fetch()) {
+                    $this->existInStorage = false;
+                    return false;
+                }
+            } catch (\Envms\FluentPDO\Exception $e) {
+                throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
             }
             $this->existInStorage = true;
             RuntimeCache::getInstance()->put(static::class, $this->Id, $result);
@@ -118,7 +144,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection<static>
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     public static function factory($source, array $bind = [])
     {
@@ -351,7 +376,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      *
      * @return static
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     public static function one(array $conditions)
     {
@@ -363,11 +387,17 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection<static>|array
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     public static function find(array $conditions)
     {
-        $select = (new Query(Util::getConnection(static::$SimpleObjectConfigNameRead)))->from(static::$TableName);
+        try {
+            $select = static
+                ::getReadQuery()
+                ->from(static::$TableName)
+            ;
+        } catch (\Envms\FluentPDO\Exception $e) {
+            throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
+        }
 
         $select->select(array_keys(static::$propertiesMapping), true);
         $simulate = false;
@@ -388,10 +418,10 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                 case '(group)':
                     continue;
                 case '(null)':
-                    $select->where($value.' IS NULL');
+                    $select->where($value . ' IS NULL');
                     continue;
                 case '(not null)':
-                    $select->where($value.' IS NOT NULL');
+                    $select->where($value . ' IS NOT NULL');
                     continue;
                 case '(!!simulate)':
                     $simulate = true;
@@ -403,11 +433,15 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                     break;
             }
         }
-        if ($simulate){
-            return [
-                'query'=> $select->getQuery(),
-                'params'=>$select->getParameters()
-            ];
+        if ($simulate) {
+            try {
+                return [
+                    'query'  => $select->getQuery(),
+                    'params' => $select->getParameters()
+                ];
+            } catch (\Envms\FluentPDO\Exception $e) {
+                throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
+            }
         }
         $result = new Collection();
         foreach ($select as $_row) {
@@ -420,7 +454,6 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     public function reload()
     {
@@ -432,48 +465,49 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
      *
      * @return bool
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     public function save($force = false): bool
     {
         $data = $this->getDataForSave();
 
         unset($data['id']);
-        switch ($this->isExistInStorage()) {
-            case false: // Create new record
-                $insert = (new Query($this->DBConWrite))
-                    ->insertInto(static::$TableName)
-                    ->values($data)
-                ;
+        try {
+            switch ($this->isExistInStorage()) {
+                case false: // Create new record
+                    $insert = static::getWriteQuery()
+                                    ->insertInto(static::$TableName)
+                                    ->values($data)
+                    ;
 
-                if (!($id = $insert->execute())) {
-                    return false;
-                }
-                $this->values['id'] = $id;
-                $this->loadedValues = $this->values;
-                $this->existInStorage = true;
-                break;
-            case true: // Update existing record
-
-                if (!$force) {
-                    $data = array_diff(array_intersect_key($data, $this->loadedValues), $this->loadedValues);
-                    if (empty($data)) {
-                        return true;
+                    if (!($id = $insert->execute())) {
+                        return false;
                     }
-                }
+                    $this->values['id'] = $id;
+                    $this->loadedValues = $this->values;
+                    $this->existInStorage = true;
+                    break;
+                case true: // Update existing record
 
-                $q = (new Query($this->DBConWrite));
-                $q->exceptionOnError = true;
-                $update = $q
-                    ->update(static::$TableName)
-                    ->set($data)
-                    ->where('id = ?', $this->__get('id'))
-                ;
+                    if (!$force) {
+                        $data = array_diff(array_intersect_key($data, $this->loadedValues), $this->loadedValues);
+                        if (empty($data)) {
+                            return true;
+                        }
+                    }
 
-                if (!$update->execute(true)) {
-                    return false;
-                }
-                break;
+                    $update = static::getWriteQuery()
+                        ->update(static::$TableName)
+                        ->set($data)
+                        ->where('id = ?', $this->__get('id'))
+                    ;
+
+                    if (!$update->execute(true)) {
+                        return false;
+                    }
+                    break;
+            }
+        } catch (\Envms\FluentPDO\Exception $e) {
+            throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
         }
         return true;
     }
@@ -531,14 +565,17 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
     /**
      * @return bool
      * @throws Exception
-     * @throws \Envms\FluentPDO\Exception
      */
     public function delete()
     {
         if (!$this->isExistInStorage()) {
             return false;
         }
-        $success = !!(new Query($this->DBConWrite))->deleteFrom(static::$TableName)->where('id = ?', $this->__get('id'))->execute();
+        try {
+            $success = !!static::getWriteQuery()->deleteFrom(static::$TableName)->where('id = ?', $this->__get('id'))->execute();
+        } catch (\Envms\FluentPDO\Exception $e) {
+            throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
+        }
         if ($success) {
             RuntimeCache::getInstance()->drop(static::class, $this->__get('id'));
         }
