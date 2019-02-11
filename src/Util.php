@@ -41,7 +41,8 @@ class Util
             'charset'  => null
         ],
         'path_models'      => '',
-        'models_namespace' => 'sanovsliy\\SimpleObject\\models\\default\\',
+        'models_namespace' => 'Sanovskiy\\SimpleObject\\models\\default\\',
+        'base_class_extends' => \Sanovskiy\SimpleObject\ActiveRecordAbstract::class,
         'read_connection'  => null,
         'write_connection' => null,
         'sql_logfile'    => null
@@ -125,7 +126,7 @@ class Util
             self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
             $logfile = self::getSettingsValue('sql_logfile',$configName);
 
-            if ($logfile && file_exists(dirname($logfile)) && is_writeable(dirname($logfile))){
+            if ($logfile && file_exists(dirname($logfile)) && is_writable(dirname($logfile))){
                 try {
                     $logger = new \Monolog\Logger('SO Logger');
                     $logger->pushHandler(new \Monolog\Handler\StreamHandler($logfile));

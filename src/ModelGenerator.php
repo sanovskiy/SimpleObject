@@ -114,9 +114,11 @@ class ModelGenerator
                     'file_name'            => $CCName . '.php',
                     'class_namespace'      => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
                     'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
+                    'base_class_extends'   => Util::getSettingsValue('base_class_extends', $this->configName),
                     'class_name'           => $CCName,
                     'fields'               => []
                 ];
+
 
                 $LogicModel = new PhpClass();
                 $LogicModel
@@ -135,9 +137,9 @@ class ModelGenerator
                 $BaseModel = new PhpClass();
                 $BaseModel
                     ->setNamespace($tableInfo['base_class_namespace'])
-                    ->setUseStatements(['Sanovskiy\SimpleObject\ActiveRecordAbstract'])
+                    ->setUseStatements([$tableInfo['base_class_extends']])
                     ->setName($tableInfo['class_name'])
-                    ->setParentClassName('ActiveRecordAbstract')
+                    ->setParentClassName(substr(strrchr($tableInfo['base_class_extends'], "\\"), 1))
                     ->setAbstract(true)
                 ;
 
@@ -218,7 +220,7 @@ class ModelGenerator
                     $propertiesMapping[$colName] = Transform::CCName($colName);
 
                     if (strtolower($dbSettings['driver']) === 'mysql') {
-                        if ($_row['COLUMN_TYPE'] == 'int(1)') {
+                        if ($_row['COLUMN_TYPE'] === 'int(1)') {
                             $_row['DATA_TYPE'] = 'tinyint';
                         }
                     }
