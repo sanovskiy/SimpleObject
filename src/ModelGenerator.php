@@ -114,7 +114,7 @@ class ModelGenerator
                     'file_name'            => $CCName . '.php',
                     'class_namespace'      => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
                     'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
-                    'base_class_extends'   => Util::getSettingsValue('base_class_extends', $this->configName),
+                    'base_class_extends'   => Util::getSettingsValue('base_class_extends', $this->configName)?:ActiveRecordAbstract::class,
                     'class_name'           => $CCName,
                     'fields'               => []
                 ];
