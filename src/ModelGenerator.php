@@ -203,15 +203,12 @@ class ModelGenerator
                         $bind[':schema'] = $tableSchema;
                         break;
                 }
-                //var_dump([$dbSettings['driver'],$bind]);echo $sql;die();
+
                 $stmt = Util::getConnection($this->configName)->prepare($sql);
                 $stmt->execute($bind);
 
                 $fields = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                /*if ($tableName === 'token') {
-                    var_dump($fields);
-                    die();
-                }*/
+                /*if ($tableName === 'token') {var_dump($fields);die();}*/
 
                 foreach ($fields as $num => $_row) {
 
@@ -224,7 +221,7 @@ class ModelGenerator
                             $_row['DATA_TYPE'] = 'tinyint';
                         }
                     }
-                    switch ($_row['DATA_TYPE']) {
+                    switch (strtolower($_row['DATA_TYPE'])) {
                         case 'date':
                             $dataTransformRules[$colName] = [
                                 'read'  => ['date2time' => []],
@@ -233,6 +230,7 @@ class ModelGenerator
                             $colVal[$colName] = 'integer';
                             break;
                         case 'timestamp':
+                        case 'timestamp without time zone':
                         case 'datetime':
                             $dataTransformRules[$colName] = [
                                 'read'  => ['date2time' => []],
