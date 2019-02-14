@@ -114,7 +114,7 @@ class ModelGenerator
                     'file_name'            => $CCName . '.php',
                     'class_namespace'      => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
                     'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
-                    'base_class_extends'   => Util::getSettingsValue('base_class_extends', $this->configName)?:ActiveRecordAbstract::class,
+                    'base_class_extends'   => Util::getSettingsValue('base_class_extends', $this->configName) ?: ActiveRecordAbstract::class,
                     'class_name'           => $CCName,
                     'fields'               => []
                 ];
@@ -221,6 +221,7 @@ class ModelGenerator
                             $_row['DATA_TYPE'] = 'tinyint';
                         }
                     }
+                    //echo strtolower($_row['DATA_TYPE']) . PHP_EOL;
                     switch (strtolower($_row['DATA_TYPE'])) {
                         case 'date':
                             $dataTransformRules[$colName] = [
@@ -259,6 +260,14 @@ class ModelGenerator
                             break;
                         case 'enum':
                             $colVal[$colName] = 'string';
+                            break;
+                        case 'json':
+                        case 'jsonb':
+                            $dataTransformRules[$colName] = [
+                                'read'  => ['unjsonize' => []],
+                                'write' => ['jsonize' => []]
+                            ];
+                            $colVal[$colName] = 'array';
                             break;
                         default:
                             $colVal[$colName] = 'string';
