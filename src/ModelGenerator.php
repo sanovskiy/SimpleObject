@@ -241,18 +241,10 @@ class ModelGenerator
                             break;
                         case 'tinyint':
                         case 'bit':
-                        case 'boolean':
-                            if ($_row['DATA_TYPE'] === 'boolean') {
-                                $dataTransformRules[$colName] = [
-                                    'read'  => ['text2boolean' => []],
-                                    'write' => ['boolean2text' => []]
-                                ];
-                            } else {
-                                $dataTransformRules[$colName] = [
-                                    'read'  => ['digit2boolean' => []],
-                                    'write' => ['boolean2digit' => []]
-                                ];
-                            }
+                            $dataTransformRules[$colName] = [
+                                'read'  => ['digit2boolean' => []],
+                                'write' => ['boolean2digit' => []]
+                            ];
                             $colVal[$colName] = 'boolean';
                             break;
                         case 'int':
