@@ -59,7 +59,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         }
         $this->DBConRead = Util::getConnection(static::$SimpleObjectConfigNameRead);
         $this->DBConWrite = Util::getConnection(static::$SimpleObjectConfigNameWrite);
-        if (is_null($id)) {
+        if ($id === null) {
             $this->Id = null;
             return;
         }
@@ -152,6 +152,7 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         }
 
         if (is_string($source)) {
+            /** @noinspection CallableParameterUseCaseInTypeContextInspection */
             $source = Util::getConnection(static::$SimpleObjectConfigNameRead)->prepare($source);
         }
 
@@ -259,6 +260,25 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
         }
         return false;
     }
+
+    /**
+     * @param $name
+     *
+     * @return bool
+     */
+    public function __isset($name)
+    {
+        if (!static::isPropertyExist($name)) {
+            return false;
+        }
+
+        if (!static::isTableFieldExist($name)) {
+            return false;
+        }
+        return true;
+
+    }
+
 
     /**
      * @param string $name
@@ -416,13 +436,13 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                     $select->having($value);
                     break;
                 case '(group)':
-                    continue;
+                    continue 2;
                 case '(null)':
                     $select->where($value . ' IS NULL');
-                    continue;
+                    continue 2;
                 case '(not null)':
                     $select->where($value . ' IS NOT NULL');
-                    continue;
+                    continue 2;
                 case '(!!simulate)':
                     $simulate = true;
                     break;
@@ -532,9 +552,9 @@ class ActiveRecordAbstract implements \Iterator, \ArrayAccess, \Countable
                     $value = Transform::apply_transform($transformation, $value, $options);
                 }
             }
-            if (null === $value) {
+            /*if (null === $value) {
                 continue;
-            }
+            }*/
             $data[$tableFieldName] = $value;
         }
         return $data;
