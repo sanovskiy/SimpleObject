@@ -27,27 +27,37 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 {
     use Iterator, ArrayAccess, Countable;
 
-    const ERROR_LOCKED          = 'Collection is locked. You can\'t modify elements list';
-    const ERROR_CLASS_MISMATCH  = 'New object\'s class didn\'t match collection\'s class';
-    const ERROR_CLASS_NOT_FOUND = 'Class not found';
+    protected const ERROR_LOCKED = 'Collection is locked. You can\'t modify elements list';
+    protected const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
+    protected const ERROR_CLASS_NOT_FOUND = 'Class not found';
 
-    protected $records = [];
-    protected $className = null;
+    /**
+     * @var string|null
+     */
+    protected $className;
 
+    /**
+     * @var bool
+     */
     protected $isLocked = false;
+
+    /**
+     * @var bool
+     */
     protected $isUnlockable = true;
 
     //<editor-fold desc="Collection interface">
+    private $returnedIdList = [];
 
     /**
      * SimpleObject_Collection constructor.
      *
-     * @param array  $data Elements array
+     * @param array $data Elements array
      * @param string $forceClass
      */
     public function __construct(array $data = [], string $forceClass = null)
     {
-        if (!is_null($forceClass)) {
+        if ($forceClass !== null) {
             $this->className = $forceClass;
         }
         if (count($data) > 0) {
@@ -113,6 +123,9 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         $this->className = $name;
         return $this;
     }
+    //</editor-fold>
+
+    //<editor-fold desc="Random access">
 
     /**
      * Returns $n-th element
@@ -123,21 +136,18 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      */
     public function getElement(int $n = 0)
     {
-        return isset($this->records[$n]) ? $this->records[$n] : null;
+        return $this->records[$n] ?? null;
     }
-    //</editor-fold>
-
-    //<editor-fold desc="Random access">
-    private $returnedIdList = [];
 
     /**
      * @return mixed
+     * @throws \Exception
      */
     public function getNextRandomElement()
     {
         $forSelect = array_values(array_diff(array_keys($this->records), $this->returnedIdList));
         if (count($forSelect) > 0) {
-            $returnIndex = $forSelect[mt_rand(0, count($forSelect) - 1)];
+            $returnIndex = $forSelect[random_int(0, count($forSelect) - 1)];
             $this->returnedIdList[] = $returnIndex;
             return $this->records[$returnIndex];
         }
@@ -147,36 +157,13 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * @return void
      */
-    public function resetRandom()
+    public function resetRandom(): void
     {
         $this->returnedIdList = [];
     }
     //</editor-fold>
 
     //<editor-fold desc="Array behavior">
-    /**
-     * @param $value
-     *
-     * @return bool
-     * @throws Exception
-     */
-    public function push($value)
-    {
-        if ($this->isLocked) {
-            throw new Exception(self::ERROR_LOCKED);
-        }
-        if (!is_object($value)) {
-            return false;
-        }
-        if (is_null($this->className) || empty($this->className)) {
-            $this->className = get_class($value);
-        }
-        if (!($value instanceof $this->className)) {
-            throw new Exception(self::ERROR_CLASS_MISMATCH);
-        }
-        array_push($this->records, $value);
-        return true;
-    }
 
     /**
      * @return mixed|null
@@ -222,7 +209,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         if (!is_object($value)) {
             return false;
         }
-        if (is_null($this->className) || empty($this->className)) {
+        if ($this->className === null || empty($this->className)) {
             $this->className = get_class($value);
         }
         if (!($value instanceof $this->className) && !is_subclass_of($value, $this->className)) {
@@ -232,24 +219,22 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         $this->records = array_values($this->records);
         return true;
     }
-    //</editor-fold>
 
-    //<editor-fold desc="Custom items actions">
     /**
-     * @param bool   $reverse
+     * @param bool $reverse
      * @param string $field
      *
      * @return void
      * @throws Exception
      */
-    public function reindexByField($reverse = false, $field = 'Id')
+    public function reindexByField($reverse = false, $field = 'Id'): void
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
         }
         $result = [];
-        for ($index = 0; $index < count($this->records); $index++) {
-            $result[$this->records[$index]->{$field}] = $this->records[$index];
+        foreach ($this->records as $indexValue) {
+            $result[$indexValue->{$field}] = $indexValue;
         }
         if ($reverse) {
             krsort($result);
@@ -258,17 +243,20 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         }
         $this->records = array_values($result);
     }
+    //</editor-fold>
+
+    //<editor-fold desc="Custom items actions">
 
     /**
      * @param string $method
-     * @param array  $args
+     * @param array $args
      *
      * @return array
      */
     public function callForEach(string $method, array $args = []): array
     {
         $reply = [];
-        for ($index = 0; $index < count($this->records); $index++) {
+        for ($index = 0, $indexMax = count($this->records); $index < $indexMax; $index++) {
             $reply[$index] = call_user_func_array([$this->records[$index], $method], $args);
         }
         return $reply;
@@ -280,11 +268,85 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return void
      */
-    public function setForEach($property, $value = null)
+    public function setForEach($property, $value = null): void
     {
-        for ($index = 0; $index < count($this->records); $index++) {
-            $this->records[$index]->{$property} = $value;
+        foreach ($this->records as $indexValue) {
+            $indexValue->{$property} = $value;
         }
+    }
+
+    /**
+     * @param string $property
+     * @param mixed $value
+     *
+     * @return Collection
+     * @throws Exception
+     */
+    public function getElementsByPropertyValue(string $property, $value): Collection
+    {
+        $elements = new self;
+        foreach ($this->records as $indexValue) {
+            if (!property_exists($indexValue, $property)) {
+                throw new Exception('Objects in current set does not have property ' . $property);
+            }
+            if ($indexValue->{$property} === $value) {
+                $elements->push($indexValue);
+            }
+        }
+        return $elements;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return bool
+     * @throws Exception
+     */
+    public function push($value): bool
+    {
+        if ($this->isLocked) {
+            throw new Exception(self::ERROR_LOCKED);
+        }
+        if (!is_object($value)) {
+            return false;
+        }
+        if ($this->className === null || empty($this->className)) {
+            $this->className = get_class($value);
+        }
+        if (!($value instanceof $this->className)) {
+            throw new Exception(self::ERROR_CLASS_MISMATCH);
+        }
+        $this->records[] = $value;
+        return true;
+    }
+
+    /**
+     * @param string $method
+     * @param mixed $value
+     *
+     * @return Collection
+     * @throws Exception
+     */
+    public function getElementsByFunctionResult(string $method, $value): Collection
+    {
+        $elements = new self;
+        foreach ($this->records as $indexValue) {
+            if (!method_exists($indexValue, $method)) {
+                throw new Exception('Objects in current set does not have method ' . $method);
+            }
+            if ($indexValue->{$method}() === $value) {
+                $elements->push($indexValue);
+            }
+        }
+        return $elements;
+    }
+
+    /**
+     * @return array
+     */
+    public function getAllRecords(): array
+    {
+        return $this->records;
     }
 
     /**
@@ -310,71 +372,6 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         //    $values[$index] = $this->records[$index]->{$property};
         //}
         return $values;
-    }
-
-    /**
-     * @param string $property
-     * @param mixed  $value
-     *
-     * @return Collection
-     * @throws Exception
-     */
-    public function getElementsByPropertyValue(string $property, $value): Collection
-    {
-        $elements = new self;
-        for ($index = 0; $index < count($this->records); $index++) {
-            if (!property_exists($this->records[$index], $property)) {
-                throw new Exception('Objects in current set does not have property ' . $property);
-            }
-            if ($this->records[$index]->{$property} == $value) {
-                $elements->push($this->records[$index]);
-            }
-        }
-        return $elements;
-    }
-
-    /**
-     * @param string $method
-     * @param mixed  $value
-     *
-     * @return Collection
-     * @throws Exception
-     */
-    public function getElementsByFunctionResult(string $method, $value): Collection
-    {
-        $elements = new self;
-        for ($index = 0; $index < count($this->records); $index++) {
-            if (!method_exists($this->records[$index], $method)) {
-                throw new Exception('Objects in current set does not have method ' . $method);
-            }
-            if ($this->records[$index]->{$method}() == $value) {
-                $elements->push($this->records[$index]);
-            }
-        }
-        return $elements;
-    }
-
-    /**
-     * @return array
-     */
-    public function getAllRecords(): array
-    {
-        return $this->records;
-    }
-
-    /**
-     * @param string $name
-     *
-     * @return mixed
-     */
-    function __get($name)
-    {
-        $object = new $this->className;
-        if (in_array($name, $object->Properties)) {
-            $result = $this->getFromEach($name);
-            return implode(', ', $result);
-        }
-        return null;
     }
     //</editor-fold>
 
