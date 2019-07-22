@@ -32,7 +32,7 @@ class Util
      * @var array
      */
     static private $default_settings = [
-        'dbcon'            => [
+        'dbcon'              => [
             'driver'   => 'mysql',
             'host'     => 'localhost',
             'user'     => 'root',
@@ -40,12 +40,12 @@ class Util
             'database' => 'simpleobject',
             'charset'  => null
         ],
-        'path_models'      => '',
-        'models_namespace' => 'Sanovskiy\\SimpleObject\\models\\default\\',
+        'path_models'        => '',
+        'models_namespace'   => 'Sanovskiy\\SimpleObject\\models\\default\\',
         'base_class_extends' => \Sanovskiy\SimpleObject\ActiveRecordAbstract::class,
-        'read_connection'  => null,
-        'write_connection' => null,
-        'sql_logfile'    => null
+        'read_connection'    => null,
+        'write_connection'   => null,
+        'sql_logfile'        => null
     ];
 
     /**
@@ -124,9 +124,9 @@ class Util
                     break;
             }
             self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
-            $logfile = self::getSettingsValue('sql_logfile',$configName);
+            $logfile = self::getSettingsValue('sql_logfile', $configName);
 
-            if ($logfile && file_exists(dirname($logfile)) && is_writable(dirname($logfile))){
+            if ($logfile && file_exists(dirname($logfile)) && is_writable(dirname($logfile))) {
                 try {
                     $logger = new \Monolog\Logger('SO Logger');
                     $logger->pushHandler(new \Monolog\Handler\StreamHandler($logfile));
@@ -159,14 +159,14 @@ class Util
     /**
      * @throws Exception
      */
-    public static function reverseEngineerModels()
+    public static function reverseEngineerModels($silent = false)
     {
         if ("cli" !== php_sapi_name()) {
             throw new Exception('You can call this method only in CLI');
         }
 
         foreach (array_keys(self::$settings) as $_configName) {
-            $generator = new ModelGenerator($_configName);
+            $generator = new ModelGenerator($_configName, $silent);
             $generator->run();
         }
     }

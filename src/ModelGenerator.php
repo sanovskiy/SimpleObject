@@ -33,16 +33,25 @@ class ModelGenerator
      * @var CLImate
      */
     protected $output;
+    /**
+     * @var bool
+     */
+    private $isSilent;
 
     /**
      * ModelGenerator constructor.
      *
      * @param string $configName
      */
-    public function __construct($configName)
+    public function __construct($configName, bool $silent = false)
     {
         $this->configName = $configName;
-        $this->output = new CLImate();
+        $this->isSilent = $silent;
+        if (!$this->isSilent) {
+            $this->output = new CLImate();
+        } else {
+            $this->output = new VoidObject();
+        }
     }
 
     public function run()
@@ -114,7 +123,8 @@ class ModelGenerator
                     'file_name'            => $CCName . '.php',
                     'class_namespace'      => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
                     'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
-                    'base_class_extends'   => Util::getSettingsValue('base_class_extends', $this->configName) ?: ActiveRecordAbstract::class,
+                    'base_class_extends'   => Util::getSettingsValue('base_class_extends',
+                        $this->configName) ?: ActiveRecordAbstract::class,
                     'class_name'           => $CCName,
                     'fields'               => []
                 ];
@@ -289,7 +299,8 @@ class ModelGenerator
                     ''
                 ];
                 foreach ($propertiesMapping as $tableField => $property) {
-                    $_ = '@property ' . (array_key_exists($tableField, $colVal) ? $colVal[$tableField] : '') . ' $' . $property;
+                    $_ = '@property ' . (array_key_exists($tableField,
+                            $colVal) ? $colVal[$tableField] : '') . ' $' . $property;
 
                     if (isset($Comments[$num])) {
                         $_ .= ' ' . $Comments[$tableField];
@@ -358,7 +369,7 @@ LOGICMODEL;
     /**
      * @param string $filename
      * @param string $contents
-     * @param bool   $base
+     * @param bool $base
      *
      * @return bool|int
      */
