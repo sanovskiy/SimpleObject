@@ -42,7 +42,7 @@ class Util
         ],
         'path_models'        => '',
         'models_namespace'   => 'Sanovskiy\\SimpleObject\\models\\default\\',
-        'base_class_extends' => \Sanovskiy\SimpleObject\ActiveRecordAbstract::class,
+        'base_class_extends' => ActiveRecordAbstract::class,
         'read_connection'    => null,
         'write_connection'   => null,
         'sql_logfile'        => null

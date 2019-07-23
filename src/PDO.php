@@ -1,6 +1,5 @@
 <?php namespace Sanovskiy\SimpleObject;
 
-use Monolog\Logger;
 
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
@@ -31,7 +30,7 @@ class PDO extends \PDO
     protected $longest_query_time = 0;
 
     /**
-     * @var Logger
+     * @var \Monolog\Logger
      */
     protected $logger = null;
 
@@ -49,14 +48,14 @@ class PDO extends \PDO
         $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('Sanovskiy\SimpleObject\PDOStatement', array($this)));
     }
 
-    public function setLogger(Logger $logger)
+    public function setLogger(\Monolog\Logger $logger)
     {
         $this->logger = $logger;
     }
 
     public function log(string $string, array $context = [])
     {
-        if ($this->logger instanceof Logger){
+        if ($this->logger instanceof \Monolog\Logger) {
             $this->logger->info($string,$context);
         }
     }
@@ -114,12 +113,11 @@ class PDO extends \PDO
      * Some IDEs can mark declaration of this method as incopatible with parent. That's not true.
      *
      * @param string $statement
-     * @param int    $mode
-     * @param null   $arg3
-     *
+     * @param int $mode
+     * @param array|null $arg3
      * @return \PDOStatement
      */
-    public function query($statement, $mode = \PDO::ATTR_DEFAULT_FETCH_MODE, $arg3 = null)
+    public function query(string $statement, int $mode = \PDO::ATTR_DEFAULT_FETCH_MODE, ?array $arg3 = null)
     {
         $start = $this->getMicro();
         $result = parent::query($statement, $mode, $arg3);
