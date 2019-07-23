@@ -1,5 +1,7 @@
 # SimpleObject
 
+More detailed documentation - https://simpleobject.readthedocs.io 
+
 ## Installation
 ```bash
 composer require sanovskiy/simple-object
