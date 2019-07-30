@@ -10,8 +10,9 @@
   "require": {
     "php": ">=5.4.0",
     "ext-pdo": "*",
-    "zendframework/zendframework1": "^1.12",
-    "ext-json": "*"
+    "ext-json": "*",
+    "zf1s/zend-db": "^1.13",
+    "zf1s/zend-registry": "^1.13"
   },
   "authors": [
     {
