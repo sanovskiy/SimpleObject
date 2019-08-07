@@ -100,7 +100,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     ::getReadQuery()
                     ->from(static::$TableName)
                     ->select(array_keys(static::$propertiesMapping), true)
-                    ->where('id = ?', $this->__get($this->getFieldProperty('id')));
+                    ->where('id = ?', $this->__get($this->getFieldProperty('id')))
+                ;
                 if (!$result = $query->fetch()) {
                     $this->existInStorage = false;
                     return false;
@@ -375,16 +376,18 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @param array $conditions
+     * @param bool $returnQuery
      *
-     * @return Collection<static>|array
+     * @return Collection|Query
      * @throws Exception
      */
-    public static function find(array $conditions)
+    public static function find(array $conditions, bool $returnQuery = false)
     {
         try {
             $select = static
                 ::getReadQuery()
-                ->from(static::$TableName);
+                ->from(static::$TableName)
+            ;
         } catch (\Envms\FluentPDO\Exception $e) {
             throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
         }
@@ -417,7 +420,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     $select->where($value . ' IS NOT NULL');
                     continue 2;
                 case '(!!simulate)':
-                    $simulate = true;
+                    $returnQuery = true;
                     break;
                 /*$select->groupBy($value);
                 break;*/
@@ -426,15 +429,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     break;
             }
         }
-        if ($simulate) {
-            try {
-                return [
-                    'query'  => $select->getQuery(),
-                    'params' => $select->getParameters()
-                ];
-            } catch (\Envms\FluentPDO\Exception $e) {
-                throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
-            }
+        if ($returnQuery) {
+            return $select;
         }
         $result = new Collection();
         foreach ($select as $_row) {
@@ -484,16 +480,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         unset($data['id']);
         try {
             // Solution for booleans that slipped through self::getDataForSave() magic
-            foreach ($data as $key => $value){
-                if (is_bool($value)){
-                    $data[$key] = $value?'true':'false';
+            foreach ($data as $key => $value) {
+                if (is_bool($value)) {
+                    $data[$key] = $value ? 'true' : 'false';
                 }
             }
             switch ($this->isExistInStorage()) {
                 case false: // Create new record
                     $insert = static::getWriteQuery()
-                        ->insertInto(static::$TableName)
-                        ->values($data);
+                                    ->insertInto(static::$TableName)
+                                    ->values($data)
+                    ;
 
                     if (!($id = $insert->execute())) {
                         return false;
@@ -512,9 +509,10 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     }
 
                     $update = static::getWriteQuery()
-                        ->update(static::$TableName)
-                        ->set($data)
-                        ->where('id = ?', $this->__get('id'));
+                                    ->update(static::$TableName)
+                                    ->set($data)
+                                    ->where('id = ?', $this->__get('id'))
+                    ;
 
                     if (!$update->execute(true)) {
                         return false;
@@ -600,7 +598,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
         try {
             $success = !!static::getWriteQuery()->deleteFrom(static::$TableName)->where('id = ?',
-                $this->__get('id'))->execute();
+                $this->__get('id'))->execute()
+            ;
         } catch (\Envms\FluentPDO\Exception $e) {
             throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
         }

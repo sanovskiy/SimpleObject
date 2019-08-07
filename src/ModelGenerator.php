@@ -54,7 +54,8 @@ class ModelGenerator
         }
     }
 
-    public function run()
+
+    public function run(): void
     {
         try {
             if (null === Util::getSettingsValue('read_connection',
@@ -323,9 +324,12 @@ class ModelGenerator
         }
     }
 
-    protected function prepareDirs()
+    protected function prepareDirs(): void
     {
         $modelsSuperDir = Util::getSettingsValue('path_models', $this->configName);
+        if (empty($modelsSuperDir)) {
+            throw new \RuntimeException('path_models is empty');
+        }
         $baseModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Base';
         $finalModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Logic';
         if (!file_exists($baseModelsDir)) {
