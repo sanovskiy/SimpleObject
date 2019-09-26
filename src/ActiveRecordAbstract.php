@@ -341,10 +341,14 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @return string
+     * @throws Exception
      */
     public static function getTableName(): string
     {
-        return self::$TableName;
+        if (static::$TableName === '') {
+            throw new Exception(static::class . ' has no defined table name. Possible misconfiguration');
+        }
+        return static::$TableName;
     }
 
     /**
