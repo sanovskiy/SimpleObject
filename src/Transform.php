@@ -202,8 +202,11 @@ class Transform
      *
      * @return mixed
      */
-    public static function unjsonize(string $value)
+    public static function unjsonize(?string $value=null)
     {
+        if ($value===null){
+            return 'null';
+        }
         return json_decode($value, true);
     }
 
