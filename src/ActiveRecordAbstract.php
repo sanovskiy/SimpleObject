@@ -480,7 +480,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     public function save($force = false): bool
     {
         $data = $this->getDataForSave();
-
+        // Filtering nulls
+        $data = array_filter($data,function($e){return $e!==null;});
         unset($data['id']);
         try {
             // Solution for booleans that slipped through self::getDataForSave() magic
