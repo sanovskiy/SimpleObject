@@ -23,9 +23,9 @@ class PDOStatement extends \PDOStatement
 {
 
     /**
-     * @var PDO
+     * @var PDO|null
      */
-    protected $pdo;
+    protected ?PDO $pdo;
 
 
     /**
@@ -42,6 +42,7 @@ class PDOStatement extends \PDOStatement
      * @param mixed $bound_input_params
      *
      * @return bool
+     * @throws \Exception
      * @internal param array|null $input_parameters
      */
     public function execute($bound_input_params = NULL)

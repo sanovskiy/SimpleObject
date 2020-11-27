@@ -40,10 +40,11 @@ class Transform
      * @param $value
      *
      * @return mixed
+     * @noinspection PhpUnused
      */
     public static function urlCorrect($value)
     {
-        $value = preg_replace("/^https?\:\/\/?/", "", $value);
+        $value = preg_replace("/^https?:\/\/?/", "", $value);
         //$value = preg_replace ( "/^www\./", "", $value );
         return $value;
     }
@@ -97,11 +98,11 @@ class Transform
 
     /**
      * @param integer|float $value
-     * @param array         $options
+     * @param array $options
      *
      * @return float
      */
-    public static function div($value, array $options = [])
+    public static function div(int|float $value, array $options = [])
     {
         $divider = $options [1];
         if ($divider == 0) {
@@ -126,6 +127,7 @@ class Transform
      * @param string $value
      *
      * @return bool
+     * @noinspection PhpUnused
      */
     public static function pgbool2bool(string $value): bool
     {
@@ -136,6 +138,7 @@ class Transform
      * @param bool $value
      *
      * @return string
+     * @noinspection PhpUnused
      */
     public static function bool2pgbool(bool $value)
     {
@@ -156,6 +159,7 @@ class Transform
      * @param $value
      *
      * @return string
+     * @noinspection PhpUnused
      */
     public static function digit2textboolean($value): string
     {
@@ -166,6 +170,7 @@ class Transform
      * @param bool $value
      *
      * @return int
+     * @noinspection PhpUnused
      */
     public static function boolean2digit(bool $value)
     {
@@ -191,6 +196,7 @@ class Transform
      * @param $value
      *
      * @return string
+     * @noinspection PhpUnused
      */
     public static function jsonize($value)
     {
@@ -198,7 +204,7 @@ class Transform
     }
 
     /**
-     * @param string $value
+     * @param string|null $value
      *
      * @return mixed
      */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Phinx\Console\PhinxApplication;
 use Phinx\Wrapper\TextWrapper;
 use PHPUnit\Framework\TestCase;
+use Sanovskiy\SimpleObject\models\Logic\Record;
 use Sanovskiy\SimpleObject\Util;
 
 final class GenerationTest extends TestCase
@@ -50,7 +51,7 @@ final class GenerationTest extends TestCase
 
     public function testModelLoad()
     {
-        $instance = new \Sanovskiy\SimpleObject\models\Logic\Record(1);
+        $instance = new Record(1);
         $this->assertObjectHasAttribute('propertiesMapping', $instance);
         $this->assertEquals(1, $instance->id);
         $this->assertEquals(123, $instance->VarInt);
@@ -62,7 +63,7 @@ final class GenerationTest extends TestCase
 
     public function testModelSave()
     {
-        $instance = new \Sanovskiy\SimpleObject\models\Logic\Record(1);
+        $instance = new Record(1);
         $num = random_int(1, 1000);
         $instance->VarInt = $num;
         $instance->save();

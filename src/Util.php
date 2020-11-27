@@ -1,5 +1,8 @@
 <?php namespace Sanovskiy\SimpleObject;
 
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -24,34 +27,34 @@ class Util
     /**
      * @var array
      */
-    protected static $restrictedConfigNames = [
+    protected static array $restrictedConfigNames = [
         'base'
     ];
 
     /**
      * @var array
      */
-    static private $default_settings = [
-        'dbcon'              => [
-            'driver'   => 'mysql',
-            'host'     => 'localhost',
-            'user'     => 'root',
+    private static array $default_settings = [
+        'dbcon' => [
+            'driver' => 'mysql',
+            'host' => 'localhost',
+            'user' => 'root',
             'password' => '',
             'database' => 'simpleobject',
-            'charset'  => null
+            'charset' => null
         ],
-        'path_models'        => '',
-        'models_namespace'   => 'Sanovskiy\\SimpleObject\\models\\default\\',
+        'path_models' => '',
+        'models_namespace' => 'Sanovskiy\\SimpleObject\\models\\default\\',
         'base_class_extends' => ActiveRecordAbstract::class,
-        'read_connection'    => null,
-        'write_connection'   => null,
-        'sql_logfile'        => null
+        'read_connection' => null,
+        'write_connection' => null,
+        'sql_logfile' => null
     ];
 
     /**
      * @var array
      */
-    static private $settings = [
+    private static array $settings = [
         'default' => []
     ];
 
@@ -59,7 +62,7 @@ class Util
      * Database connection
      * @var PDO[]
      */
-    static private $connections = [
+    private static array $connections = [
         'default' => null
     ];
 
@@ -128,8 +131,8 @@ class Util
 
             if ($logfile && file_exists(dirname($logfile)) && is_writable(dirname($logfile))) {
                 try {
-                    $logger = new \Monolog\Logger('SO Logger');
-                    $logger->pushHandler(new \Monolog\Handler\StreamHandler($logfile));
+                    $logger = new Logger('SO Logger');
+                    $logger->pushHandler(new StreamHandler($logfile));
                     self::$connections[$configName]->setLogger($logger);
                 } catch (\Exception $e) {
 
@@ -145,7 +148,7 @@ class Util
      * @param string $configName
      * @return null
      */
-    public static function getSettingsValue($name, $configName = 'default')
+    public static function getSettingsValue(string $name, $configName = 'default')
     {
         if (isset(self::$settings[$configName][$name])) {
             return self::$settings[$configName][$name];
@@ -157,9 +160,10 @@ class Util
     }
 
     /**
+     * @param bool $silent
      * @throws Exception
      */
-    public static function reverseEngineerModels($silent = false)
+    public static function reverseEngineerModels(bool $silent = false)
     {
         if ("cli" !== php_sapi_name()) {
             throw new Exception('You can call this method only in CLI');

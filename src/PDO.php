@@ -1,6 +1,8 @@
 <?php namespace Sanovskiy\SimpleObject;
 
 
+use Monolog\Logger;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -24,15 +26,15 @@
 class PDO extends \PDO
 {
 
-    protected $queries_count = 0;
-    protected $total_query_time = 0;
-    protected $longest_query = '';
-    protected $longest_query_time = 0;
+    protected int $queries_count = 0;
+    protected int $total_query_time = 0;
+    protected string $longest_query = '';
+    protected int $longest_query_time = 0;
 
     /**
-     * @var \Monolog\Logger
+     * @var Logger|null
      */
-    protected $logger = null;
+    protected ?Logger $logger = null;
 
     /**
      * Sanovskiy\SimpleObject\PDO constructor.
@@ -48,20 +50,21 @@ class PDO extends \PDO
         $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('Sanovskiy\SimpleObject\PDOStatement', array($this)));
     }
 
-    public function setLogger(\Monolog\Logger $logger)
+    public function setLogger(Logger $logger)
     {
         $this->logger = $logger;
     }
 
     public function log(string $string, array $context = [])
     {
-        if ($this->logger instanceof \Monolog\Logger) {
+        if ($this->logger instanceof Logger) {
             $this->logger->info($string,$context);
         }
     }
 
     /**
      * @return array
+     * @noinspection PhpUnused - It's used
      */
     public function getUsageInfo()
     {
@@ -97,6 +100,7 @@ class PDO extends \PDO
      * @param string $statement
      *
      * @return int
+     * @noinspection PhpMissingParamTypeInspection - PDO method has bad sinature
      */
     public function exec($statement)
     {

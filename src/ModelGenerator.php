@@ -21,31 +21,34 @@
 use gossi\codegen\generator\CodeGenerator;
 use gossi\codegen\model\{AbstractPhpMember, PhpClass, PhpProperty};
 use League\CLImate\CLImate;
+use RuntimeException;
 
 class ModelGenerator
 {
     /**
      * @var string
      */
-    protected $configName;
+    protected string $configName;
 
     /**
-     * @var CLImate
+     * @var CLImate|VoidObject
      */
-    protected $output;
+    protected VoidObject|CLImate $output;
     /**
      * @var bool
      */
-    private $isSilent;
+    private bool $isSilent;
 
     /**
      * ModelGenerator constructor.
      *
      * @param string $configName
+     * @param bool $silent
      */
-    public function __construct($configName, bool $silent = false)
+    public function __construct(string $configName, bool $silent = false)
     {
         $this->configName = $configName;
+
         $this->isSilent = $silent;
         if (!$this->isSilent) {
             $this->output = new CLImate();
@@ -261,9 +264,6 @@ class ModelGenerator
                         case 'int':
                             $colVal[$colName] = 'integer';
                             break;
-                        case 'enum':
-                            $colVal[$colName] = 'string';
-                            break;
                         case 'json':
                         case 'jsonb':
                             $dataTransformRules[$colName] = [
@@ -272,6 +272,7 @@ class ModelGenerator
                             ];
                             $colVal[$colName] = 'array';
                             break;
+                        case 'enum':
                         default:
                             $colVal[$colName] = 'string';
                             break;
@@ -303,7 +304,7 @@ class ModelGenerator
                     $_ = '@property ' . (array_key_exists($tableField,
                             $colVal) ? $colVal[$tableField] : '') . ' $' . $property;
 
-                    if (isset($Comments[$num])) {
+                    if (isset($Comments[$tableField])) {
                         $_ .= ' ' . $Comments[$tableField];
                     }
 
@@ -312,7 +313,7 @@ class ModelGenerator
                 }
 
                 $BaseModel
-                    ->setDescription(implode(PHP_EOL, $classDescription));;
+                    ->setDescription(implode(PHP_EOL, $classDescription));
                 $BaseCode = $this->getBaseModelHeader() . $generator->generate($BaseModel);
                 $this->writeModel($tableInfo['file_name'], $BaseCode, true);
                 $this->output->out('[<blue>Base</blue>]');
@@ -328,18 +329,18 @@ class ModelGenerator
     {
         $modelsSuperDir = Util::getSettingsValue('path_models', $this->configName);
         if (empty($modelsSuperDir)) {
-            throw new \RuntimeException('path_models is empty');
+            throw new RuntimeException('path_models is empty');
         }
         $baseModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Base';
         $finalModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Logic';
         if (!file_exists($baseModelsDir)) {
             if (!mkdir($baseModelsDir, 0755, true) && !is_dir($baseModelsDir)) {
-                throw new \RuntimeException(sprintf('Directory "%s" was not created', $baseModelsDir));
+                throw new RuntimeException(sprintf('Directory "%s" was not created', $baseModelsDir));
             }
         }
         if (!file_exists($finalModelsDir)) {
             if (!mkdir($finalModelsDir, 0755, true) && !is_dir($finalModelsDir)) {
-                throw new \RuntimeException(sprintf('Directory "%s" was not created', $finalModelsDir));
+                throw new RuntimeException(sprintf('Directory "%s" was not created', $finalModelsDir));
             }
         }
 
@@ -377,7 +378,7 @@ LOGICMODEL;
      *
      * @return bool|int
      */
-    protected function writeModel($filename, $contents, $base = false)
+    protected function writeModel(string $filename, string $contents, $base = false)
     {
         $path = Util::getSettingsValue('path_models',
                 $this->configName) . DIRECTORY_SEPARATOR . ($base ? 'Base' : 'Logic') . DIRECTORY_SEPARATOR . $filename;
