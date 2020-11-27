@@ -19,12 +19,12 @@ class RuntimeCache implements Singleton
 {
     use \Sanovskiy\Traits\Patterns\Singleton;
 
-    protected $disabled = false;
+    protected bool $disabled = false;
 
     /**
      * @var array
      */
-    protected $cache = [];
+    protected array $cache = [];
 
     /**
      * @param string $classname

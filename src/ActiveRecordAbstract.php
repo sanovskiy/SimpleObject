@@ -21,32 +21,32 @@ use Iterator;
  */
 class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 {
-    protected static $SimpleObjectConfigNameRead = 'default';
-    protected static $SimpleObjectConfigNameWrite = 'default';
+    protected static string $SimpleObjectConfigNameRead = 'default';
+    protected static string $SimpleObjectConfigNameWrite = 'default';
     /**
      * @var string
      */
-    protected static $TableName = '';
+    protected static string $TableName = '';
     /**
      * Model properties to field mapping
      * @var array
      */
-    protected static $propertiesMapping = [];
-    protected static $dataTransformRules = [];
+    protected static array $propertiesMapping = [];
+    protected static array $dataTransformRules = [];
     /**
-     * @var PDO
+     * @var ?PDO
      */
-    protected $DBConWrite;
+    protected ?PDO $DBConWrite;
     /**
-     * @var PDO
+     * @var ?PDO
      */
-    protected $DBConRead;
+    protected ?PDO $DBConRead;
     /**
      * @var bool
      */
-    protected $existInStorage = false;
-    protected $values = [];
-    protected $loadedValues = [];
+    protected bool $existInStorage = false;
+    protected array $values = [];
+    protected array $loadedValues = [];
 
     /**
      * ActiveRecordAbstract constructor.
@@ -76,7 +76,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
 
     protected function init(): bool
-
     {
         return true;
     }
@@ -100,8 +99,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     ::getReadQuery()
                     ->from(static::$TableName)
                     ->select(array_keys(static::$propertiesMapping), true)
-                    ->where('id = ?', $this->__get($this->getFieldProperty('id')))
-                ;
+                    ->where('id = ?', $this->__get($this->getFieldProperty('id')));
                 if (!$result = $query->fetch()) {
                     $this->existInStorage = false;
                     return false;
@@ -278,7 +276,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return Collection<static>
      * @throws Exception
      */
-    public static function factory($source, array $bind = [])
+    public static function factory(\PDOStatement|string $source, array $bind = [])
     {
         if (!is_string($source) && !($source instanceof \PDOStatement)) {
             throw new Exception('Unknown type ' . gettype($source) . '. Expected string or PDOStatement');
@@ -314,7 +312,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return bool
      */
-    public static function setReadTransform($field, $transformName, $transformOptions)
+    public static function setReadTransform(string $field, string $transformName, $transformOptions): bool
     {
         if (!static::isTableFieldExist($field)) {
             return false;
@@ -330,7 +328,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return bool
      */
-    public static function setWriteTransform($field, $transformName, $transformOptions)
+    public static function setWriteTransform($field, $transformName, $transformOptions): bool
     {
         if (!static::isTableFieldExist($field)) {
             return false;
@@ -354,7 +352,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return PDO
      */
-    public static function getDBConRead()
+    public static function getDBConRead(): PDO
     {
         return Util::getConnection(self::$SimpleObjectConfigNameRead);
     }
@@ -362,7 +360,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return PDO
      */
-    public static function getDBConWrite()
+    public static function getDBConWrite(): PDO
     {
         return Util::getConnection(self::$SimpleObjectConfigNameWrite);
     }
@@ -373,31 +371,28 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return static
      * @throws Exception
      */
-    public static function one(array $conditions)
+    public static function one(array $conditions): ActiveRecordAbstract
     {
         return static::find($conditions)->getElement();
     }
 
     /**
      * @param array $conditions
-     * @param bool $returnQuery
-     *
      * @return Collection|Query
      * @throws Exception
      */
-    public static function find(array $conditions, bool $returnQuery = false)
+    public static function find(array $conditions): Collection|Query
     {
         try {
             $select = static
                 ::getReadQuery()
-                ->from(static::$TableName)
-            ;
+                ->from(static::$TableName);
         } catch (\Envms\FluentPDO\Exception $e) {
             throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
         }
 
         $select->select(array_keys(static::$propertiesMapping), true);
-        $simulate = false;
+
         foreach ($conditions as $condition => $value) {
             switch (strtolower($condition)) {
                 case '(columns)':
@@ -423,19 +418,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 case '(not null)':
                     $select->where($value . ' IS NOT NULL');
                     continue 2;
-                case '(!!simulate)':
+/*                case '(!!simulate)':
                     $returnQuery = true;
-                    break;
-                /*$select->groupBy($value);
-                break;*/
+                    break;*/
                 default:
                     $select->where($condition, $value);
                     break;
             }
         }
-        if ($returnQuery) {
+/*        if ($returnQuery) {
             return $select;
-        }
+        }*/
         $result = new Collection();
         foreach ($select as $_row) {
             $entity = new static();
@@ -481,7 +474,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     {
         $data = $this->getDataForSave();
         // Filtering nulls
-        $data = array_filter($data,function($e){return $e!==null;});
+        $data = array_filter($data, function ($e) {
+            return $e !== null;
+        });
         unset($data['id']);
         try {
             // Solution for booleans that slipped through self::getDataForSave() magic
@@ -493,9 +488,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             switch ($this->isExistInStorage()) {
                 case false: // Create new record
                     $insert = static::getWriteQuery()
-                                    ->insertInto(static::$TableName)
-                                    ->values($data)
-                    ;
+                        ->insertInto(static::$TableName)
+                        ->values($data);
 
                     if (!($id = $insert->execute())) {
                         return false;
@@ -514,10 +508,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     }
 
                     $update = static::getWriteQuery()
-                                    ->update(static::$TableName)
-                                    ->set($data)
-                                    ->where('id = ?', $this->__get('id'))
-                    ;
+                        ->update(static::$TableName)
+                        ->set($data)
+                        ->where('id = ?', $this->__get('id'));
 
                     if (!$update->execute(true)) {
                         return false;
@@ -603,8 +596,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
         try {
             $success = !!static::getWriteQuery()->deleteFrom(static::$TableName)->where('id = ?',
-                $this->__get('id'))->execute()
-            ;
+                $this->__get('id'))->execute();
         } catch (\Envms\FluentPDO\Exception $e) {
             throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
         }

@@ -34,28 +34,28 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * @var string|null
      */
-    protected $className;
+    protected ?string $className;
 
     /**
      * @var bool
      */
-    protected $isLocked = false;
+    protected bool $isLocked = false;
 
     /**
      * @var bool
      */
-    protected $isUnlockable = true;
+    protected bool $isUnlockable = true;
 
     //<editor-fold desc="Collection interface">
-    private $returnedIdList = [];
+    private array $returnedIdList = [];
 
     /**
      * SimpleObject_Collection constructor.
      *
      * @param array $data Elements array
-     * @param string $forceClass
+     * @param string|null $forceClass
      */
-    public function __construct(array $data = [], string $forceClass = null)
+    public function __construct(array $data = [], ?string $forceClass = null)
     {
         if ($forceClass !== null) {
             $this->className = $forceClass;
@@ -354,7 +354,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return array
      */
-    public function getFromEach($property): array
+    public function getFromEach(string|array $property): array
     {
         $values = [];
         foreach ($this->records as $index => $element) {
