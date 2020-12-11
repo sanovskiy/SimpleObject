@@ -373,10 +373,10 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @param array $conditions
      *
-     * @return static
+     * @return ActiveRecordAbstract|null
      * @throws Exception
      */
-    public static function one(array $conditions): ActiveRecordAbstract
+    public static function one(array $conditions): ?ActiveRecordAbstract
     {
         return static::find($conditions)->getElement();
     }
