@@ -34,7 +34,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * @var string|null
      */
-    protected ?string $className;
+    protected ?string $className = null;
 
     /**
      * @var bool
