@@ -18,9 +18,10 @@
  *
  */
 
-use gossi\codegen\generator\CodeGenerator;
-use gossi\codegen\model\{AbstractPhpMember, PhpClass, PhpProperty};
 use League\CLImate\CLImate;
+use Nette\PhpGenerator\ClassType;
+use Nette\PhpGenerator\PhpNamespace;
+use Nette\PhpGenerator\PsrPrinter;
 use RuntimeException;
 
 class ModelGenerator
@@ -66,7 +67,7 @@ class ModelGenerator
                 throw new Exception('Ignoring connection ' . $this->configName . ' marked as read_correction');
             }
             $dbSettings = Util::getSettingsValue('dbcon', $this->configName);
-            $this->output->out('Reverse engineering database ' . $dbSettings['database']);
+            $this->output->out(sprintf("Reverse engineering database %s", $dbSettings['database']));
 
             $this->prepareDirs();
             $bind = [];
@@ -75,7 +76,7 @@ class ModelGenerator
                     $sql = 'select schemaname,tablename from pg_tables where schemaname=\'public\'';
                     break;
                 case 'mysql':
-                    $sql = 'SHOW TABLES FROM `' . $dbSettings['database'] . '`';
+                    $sql = sprintf("SHOW TABLES FROM `%s`", $dbSettings['database']);
                     break;
                 case 'sqlsrv':
                 case 'odbc':
@@ -84,7 +85,7 @@ class ModelGenerator
                     $bind = [':ttype' => 'BASE TABLE'];
                     break;
                 default:
-                    throw new \Exception('Unsupported driver ' . $dbSettings['driver']);
+                    throw new \Exception(sprintf("Unsupported driver %s", $dbSettings['driver']));
             }
 
             $stmt = Util::getConnection($this->configName)->prepare($sql);
@@ -95,7 +96,7 @@ class ModelGenerator
 
             $tables = $stmt->fetchAll(PDO::FETCH_NUM);
 
-            $generator = new CodeGenerator();
+            $printer = new PsrPrinter();
 
             $this->output->out('Generating files:');
             foreach ($tables as $tableRow) {
@@ -123,39 +124,37 @@ class ModelGenerator
                 $this->output->inline('Table ' . $tableName . '... ');
 
                 $tableInfo = [
-                    'table_name'           => $tableName,
-                    'file_name'            => $CCName . '.php',
-                    'class_namespace'      => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
+                    'table_name' => $tableName,
+                    'file_name' => $CCName . '.php',
+                    'class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
                     'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
-                    'base_class_extends'   => Util::getSettingsValue('base_class_extends',
+                    'base_class_extends' => Util::getSettingsValue('base_class_extends',
                         $this->configName) ?: ActiveRecordAbstract::class,
-                    'class_name'           => $CCName,
-                    'fields'               => []
+                    'class_name' => $CCName,
+                    'fields' => []
                 ];
 
-
-                $LogicModel = new PhpClass();
+                $LogicModel = new ClassType($tableInfo['class_name']);
                 $LogicModel
-                    ->setNamespace($tableInfo['class_namespace'])
-                    ->setUseStatements(['Base_' . $tableInfo['class_name'] => $tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name']])
+                    ->setExtends(['Base_' . $tableInfo['class_name']=>$tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name']])
                     ->setName($tableInfo['class_name'])
-                    ->setParentClassName('Base_' . $tableInfo['class_name'])
-                    ->setDescription('LogicModel class for ' . $tableInfo['table_name'])
-                ;
+                    ->setComment(sprintf("LogicModel class for table %s", $tableInfo['table_name']));
 
-                $LogicCode = $this->getLogicModelHeader() . $generator->generate($LogicModel);
-                $this->writeModel($tableInfo['file_name'], $LogicCode, false);
+                $LogicNamespace = new PhpNamespace($tableInfo['class_namespace']);
+                $LogicNamespace->addUse($tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name'],'Base_' . $tableInfo['class_name']);
+                $LogicNamespace->add($LogicModel);
+
+                $this->writeModel($tableInfo['file_name'], $printer->printNamespace($LogicNamespace), false);
 
                 $this->output->inline('[<green>Logic</green>] ');
 
-                $BaseModel = new PhpClass();
+                $BaseModel = new ClassType($tableInfo['class_name']);
                 $BaseModel
-                    ->setNamespace($tableInfo['base_class_namespace'])
-                    ->setUseStatements([$tableInfo['base_class_extends']])
-                    ->setName($tableInfo['class_name'])
-                    ->setParentClassName(substr(strrchr($tableInfo['base_class_extends'], "\\"), 1))
-                    ->setAbstract(true)
-                ;
+                    ->setExtends($tableInfo['base_class_extends'])
+                    ->setAbstract(true);
+                $BaseNamespace = new PhpNamespace($tableInfo['base_class_namespace']);
+                $BaseNamespace->addUse($tableInfo['base_class_extends']);
+                $BaseNamespace->add($BaseModel);
 
                 $writeConfigName = $this->configName;
                 $readConfigName = Util::getSettingsValue('read_connection', $this->configName);
@@ -165,43 +164,40 @@ class ModelGenerator
                 }
 
                 if ($writeConfigName !== 'default') {
-                    $BaseModel->setProperty(
-                        PhpProperty::create('SimpleObjectConfigNameWrite')
-                                   ->setValue($writeConfigName)
-                                   ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
-                                   ->setDescription('Config name for write connection')
-                                   ->setStatic(true)
-                    );
+                    $BaseModel
+                        ->addProperty('SimpleObjectConfigNameWrite',$writeConfigName)
+                        ->setProtected()
+                        ->addComment('Config name for write connection')
+                        ->setStatic()
+                        ->setType('string')
+                    ;
                 }
                 if ($readConfigName !== 'default') {
-                    $BaseModel->setProperty(
-                        PhpProperty::create('SimpleObjectConfigNameRead')
-                                   ->setValue($readConfigName)
-                                   ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
-                                   ->setDescription('Config name for read connection')
-                                   ->setStatic(true)
-                    );
+                    $BaseModel
+                        ->addProperty('SimpleObjectConfigNameRead',$readConfigName)
+                        ->setProtected()
+                        ->addComment('Config name for read connection')
+                        ->setStatic()
+                        ->setType('string')
+                    ;
                 }
-                $BaseModel->setProperty(
-                    PhpProperty::create('TableName')
-                               ->setValue($tableInfo['table_name'])
-                               ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
-                               ->setStatic(true)
-                               ->setDescription('Model database table name')
-                );
-
+                $BaseModel
+                    ->addProperty('TableName',$tableInfo['table_name'])
+                    ->setType('string')
+                    ->setProtected()
+                    ->setStatic()
+                    ->addComment('Model database table name')
+                ;
 
                 $propertiesMapping = [];
                 $Comments = [];
                 $dataTransformRules = [];
                 $colVal = [];
 
-                //$driver = Util::getSettingsValue('driver', $this->configName);
-
                 $sql = 'SELECT * FROM information_schema.columns WHERE table_name = :table';
 
                 $bind = [
-                    ':table'    => $tableName,
+                    ':table' => $tableName,
                     ':database' => $dbSettings['database']
                 ];
 
@@ -222,7 +218,6 @@ class ModelGenerator
                 $stmt->execute($bind);
 
                 $fields = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                /*if ($tableName === 'token') {var_dump($fields);die();}*/
 
                 foreach ($fields as $num => $_row) {
 
@@ -239,7 +234,7 @@ class ModelGenerator
                     switch (strtolower($_row['DATA_TYPE'])) {
                         case 'date':
                             $dataTransformRules[$colName] = [
-                                'read'  => ['date2time' => []],
+                                'read' => ['date2time' => []],
                                 'write' => ['time2date' => ['format' => 'Y-m-d']]
                             ];
                             $colVal[$colName] = 'integer';
@@ -248,7 +243,7 @@ class ModelGenerator
                         case 'timestamp without time zone':
                         case 'datetime':
                             $dataTransformRules[$colName] = [
-                                'read'  => ['date2time' => []],
+                                'read' => ['date2time' => []],
                                 'write' => ['time2date' => ['format' => 'Y-m-d H:i:s']]
                             ];
                             $colVal[$colName] = 'integer';
@@ -256,7 +251,7 @@ class ModelGenerator
                         case 'tinyint':
                         case 'bit':
                             $dataTransformRules[$colName] = [
-                                'read'  => ['digit2boolean' => []],
+                                'read' => ['digit2boolean' => []],
                                 'write' => ['boolean2digit' => []]
                             ];
                             $colVal[$colName] = 'boolean';
@@ -267,7 +262,7 @@ class ModelGenerator
                         case 'json':
                         case 'jsonb':
                             $dataTransformRules[$colName] = [
-                                'read'  => ['unjsonize' => []],
+                                'read' => ['unjsonize' => []],
                                 'write' => ['jsonize' => []]
                             ];
                             $colVal[$colName] = 'array';
@@ -281,41 +276,33 @@ class ModelGenerator
                         $Comments[$colName] = $_row['COLUMN_COMMENT'];
                     }
                 }
-                $BaseModel->setProperty(
-                    PhpProperty::create('propertiesMapping')
-                               ->setExpression(self::arrayToString($propertiesMapping))
-                               ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
-                               ->setDescription(['Model properties for table field mapping', '@var array'])
-                               ->setStatic(true)
-                );
-                $BaseModel->setProperty(
-                    PhpProperty::create('dataTransformRules')
-                               ->setExpression(self::arrayToString($dataTransformRules))
-                               ->setVisibility(AbstractPhpMember::VISIBILITY_PROTECTED)
-                               ->setDescription(['Transformations for reading and writing', '@var array'])
-                               ->setStatic(true)
-                );
+                $BaseModel
+                    ->addProperty('propertiesMapping',$propertiesMapping)
+                    ->setType('array')
+                    ->setProtected()
+                    ->addComment('Model properties for table field mapping')
+                    ->setStatic()
+                ;
+                $BaseModel
+                    ->addProperty('dataTransformRules',$dataTransformRules)
+                    ->setProtected()
+                    ->setType('array')
+                    ->addComment('Transformations for reading and writing')
+                    ->setStatic()
+                ;
 
-                $classDescription = [
-                    'Base class for model ' . $tableInfo['class_namespace'] . '\\' . $tableInfo['class_name'],
-                    ''
-                ];
+                $BaseModel->addComment('Base class for model ' . $tableInfo['class_namespace'] . '\\' . $tableInfo['class_name']);
                 foreach ($propertiesMapping as $tableField => $property) {
-                    $_ = '@property ' . (array_key_exists($tableField,
-                            $colVal) ? $colVal[$tableField] : '') . ' $' . $property;
+                    $_ = '@property ' . (array_key_exists($tableField, $colVal) ? $colVal[$tableField] : '') . ' $' . $property;
 
                     if (isset($Comments[$tableField])) {
-                        $_ .= ' ' . $Comments[$tableField];
+                        $_ .= sprintf(" %s", $Comments[$tableField]);
                     }
 
-                    $classDescription [] = $_;
-
+                    $BaseModel->addComment($_);
                 }
 
-                $BaseModel
-                    ->setDescription(implode(PHP_EOL, $classDescription));
-                $BaseCode = $this->getBaseModelHeader() . $generator->generate($BaseModel);
-                $this->writeModel($tableInfo['file_name'], $BaseCode, true);
+                $this->writeModel($tableInfo['file_name'], $printer->printNamespace($BaseNamespace), true);
                 $this->output->out('[<blue>Base</blue>]');
             }
             $this->output->green('All done.');
@@ -359,7 +346,7 @@ class ModelGenerator
     /**
      * @return string
      */
-    protected function getLogicModelHeader()
+    protected function getLogicModelHeader(): string
     {
         return <<<LOGICMODEL
 <?php
@@ -371,6 +358,7 @@ class ModelGenerator
 LOGICMODEL;
     }
 
+    const PHP_HEADER='<?PHP'.PHP_EOL;
     /**
      * @param string $filename
      * @param string $contents
@@ -378,45 +366,20 @@ LOGICMODEL;
      *
      * @return bool|int
      */
-    protected function writeModel(string $filename, string $contents, $base = false)
+    protected function writeModel(string $filename, string $contents, $base = false): bool|int
     {
         $path = Util::getSettingsValue('path_models',
                 $this->configName) . DIRECTORY_SEPARATOR . ($base ? 'Base' : 'Logic') . DIRECTORY_SEPARATOR . $filename;
         if (!file_exists($path)) {
-            return file_put_contents($path, $contents);
+            return file_put_contents($path, ($base?$this->getBaseModelHeader():$this->getLogicModelHeader()).$contents);
         }
         return false;
-    }
-
-    protected static function arrayToString($array, $indent = 0)
-    {
-        if (!is_array($array)) {
-            return $array;
-        }
-        $str = '[' . PHP_EOL;
-        $recs = [];
-        foreach ($array as $key => $value) {
-            $keyStr = (is_numeric($key) ? $key : '\'' . $key . '\'');
-            if (is_array($value)) {
-                $recs[] = str_repeat("\t", $indent + 1) . $keyStr . ' => ' . self::arrayToString($value, $indent + 1);
-                continue;
-            }
-            if (is_string($value)) {
-                $recs[] = str_repeat("\t", $indent + 1) . $keyStr . ' => \'' . str_replace('\\', '\\\\', $value) . '\'';
-                continue;
-            }
-            $recs[] = str_repeat("\t", $indent) . $keyStr . ' => ' . $value;
-
-        }
-        $str .= implode(', ' . PHP_EOL, $recs);
-        $str .= PHP_EOL . str_repeat("\t", $indent) . ']';
-        return $str;
     }
 
     /**
      * @return string
      */
-    protected function getBaseModelHeader()
+    protected function getBaseModelHeader(): string
     {
         return <<<BASEMODEL
 <?php

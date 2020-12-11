@@ -11,12 +11,11 @@
     "ext-pdo": "*",
     "ext-json": "*",
     "sanovskiy/traitlib": "*",
-    "gossi/php-code-generator": "*",
     "envms/fluentpdo": "*",
-    "league/climate": "*"
+    "league/climate": "*",
+    "nette/php-generator": "^3.5"
   },
   "require-dev": {
-    "phpunit/phpunit": "*",
     "robmorgan/phinx": "*",
     "monolog/monolog": "*"
   },
