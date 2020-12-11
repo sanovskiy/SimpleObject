@@ -1,6 +1,5 @@
 <?php namespace Sanovskiy\SimpleObject;
 
-
 use Monolog\Logger;
 
 /**
@@ -66,7 +65,7 @@ class PDO extends \PDO
      * @return array
      * @noinspection PhpUnused - It's used
      */
-    public function getUsageInfo()
+    public function getUsageInfo(): array
     {
         return [
             'TotalQueries'     => $this->queries_count,
@@ -79,11 +78,16 @@ class PDO extends \PDO
     /**
      * @return float
      */
-    public function getMicro()
+    public function getMicro(): float
     {
         return microtime(true);
     }
 
+    /**
+     * @param float $start
+     * @param float $end
+     * @param string $query
+     */
     public function registerTime(float $start, float $end, string $query = '')
     {
         $this->queries_count++;
@@ -102,7 +106,7 @@ class PDO extends \PDO
      * @return int
      * @noinspection PhpMissingParamTypeInspection - PDO method has bad sinature
      */
-    public function exec($statement)
+    public function exec($statement): int
     {
         $start = $this->getMicro();
         $result = parent::exec($statement);
@@ -111,22 +115,22 @@ class PDO extends \PDO
         return $result;
     }
 
-    /** @noinspection PhpSignatureMismatchDuringInheritanceInspection */
     /**
      * Overloads parent query method to add some profiling
      * Some IDEs can mark declaration of this method as incopatible with parent. That's not true.
      *
-     * @param string $statement
-     * @param int $mode
-     * @param array|null $arg3
+     * @param string $query
+     * @param int|null $fetchMode
+     * @param mixed ...$fetchModeArgs
      * @return \PDOStatement
+     * @noinspection PhpHierarchyChecksInspection
      */
-    public function query(string $statement, int $mode = \PDO::ATTR_DEFAULT_FETCH_MODE, ?array $arg3 = null)
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs)
     {
         $start = $this->getMicro();
-        $result = parent::query($statement, $mode, $arg3);
+        $result = parent::query($query, $fetchMode, ...$fetchModeArgs);
         $end = $this->getMicro();
-        $this->registerTime($start, $end, $statement);
+        $this->registerTime($start, $end, $query);
         return $result;
     }
 

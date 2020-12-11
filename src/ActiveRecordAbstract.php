@@ -81,7 +81,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * Loads model data from storge
+     * Loads model data from storage
      *
      * @param bool $forceLoad
      *
@@ -133,7 +133,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return mixed
      * @throws Exception
      */
-    public function __get(string $name)
+    public function __get(string $name): mixed
     {
         if (static::isPropertyExist($name)) {
             if (!array_key_exists(static::getPropertyField($name), $this->values)) {
@@ -167,18 +167,18 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param string $name
      * @param mixed $value
      *
-     * @return bool|mixed
+     * @return void
      * @throws Exception
      */
-    public function __set(string $name, $value)
+    public function __set(string $name, mixed $value)
     {
         if (static::isPropertyExist($name)) {
-            return $this->values[static::getPropertyField($name)] = $value;
+            $this->values[static::getPropertyField($name)] = $value;
+            return;
         }
         if (static::isTableFieldExist($name)) {
-            return $this->values[$name] = $value;
+            $this->values[$name] = $value;
         }
-        return false;
     }
 
     /**
@@ -231,7 +231,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * Fills model fith supplied array data
+     * Fills model with supplied array data
      *
      * @param array $data
      * @param bool $applyTransforms
@@ -260,7 +260,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return array
      */
-    public function getReadTransforms(string $fieldName)
+    public function getReadTransforms(string $fieldName): array
     {
         if (!array_key_exists($fieldName, static::$dataTransformRules) || !array_key_exists('read',
                 static::$dataTransformRules[$fieldName])) {
@@ -276,7 +276,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return Collection<static>
      * @throws Exception
      */
-    public static function factory(\PDOStatement|string $source, array $bind = [])
+    public static function factory(\PDOStatement|string $source, array $bind = []): Collection
     {
         if (!is_string($source) && !($source instanceof \PDOStatement)) {
             throw new Exception('Unknown type ' . gettype($source) . '. Expected string or PDOStatement');
@@ -297,7 +297,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 throw new Exception('Missing fields ' . implode(', ', $missingFields));
             }
             $entity = new static();
-            $entity->populate($row, true, false);
+            $entity->populate($row);
             $collection->push($entity);
 
         }
@@ -311,6 +311,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param $transformOptions
      *
      * @return bool
+     * @noinspection PhpUnused It's used
      */
     public static function setReadTransform(string $field, string $transformName, $transformOptions): bool
     {
@@ -327,6 +328,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param $transformOptions
      *
      * @return bool
+     * @noinspection PhpUnused - It's used
      */
     public static function setWriteTransform($field, $transformName, $transformOptions): bool
     {
@@ -340,6 +342,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return string
      * @throws Exception
+     * @noinspection PhpUnused - It's used
      */
     public static function getTableName(): string
     {
@@ -351,6 +354,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @return PDO
+     * @noinspection PhpUnused - It's used
      */
     public static function getDBConRead(): PDO
     {
@@ -359,6 +363,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @return PDO
+     * @noinspection PhpUnused - It's used
      */
     public static function getDBConWrite(): PDO
     {
@@ -432,7 +437,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $result = new Collection();
         foreach ($select as $_row) {
             $entity = new static();
-            $entity->populate($_row, true, false);
+            $entity->populate($_row);
             $result->push($entity);
         }
         return $result;
@@ -442,8 +447,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param $name
      *
      * @return bool
+     * @noinspection PhpUnused - It's used
      */
-    public function __isset($name)
+    public function __isset($name): bool
     {
         if (!static::isPropertyExist($name)) {
             return false;
@@ -458,6 +464,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @throws Exception
+     * @noinspection PhpUnused - It's used
      */
     public function reload()
     {
@@ -528,7 +535,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return array|null
      */
-    public function getDataForSave($applyTransforms = true)
+    public function getDataForSave($applyTransforms = true): ?array
     {
         $data = [];
         foreach (array_keys(static::$propertiesMapping) as $tableFieldName) {
@@ -555,7 +562,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return array
      */
-    public function getWriteTransforms(string $fieldName)
+    public function getWriteTransforms(string $fieldName): array
     {
         if (!array_key_exists($fieldName, static::$dataTransformRules) || !array_key_exists('write',
                 static::$dataTransformRules[$fieldName])) {
@@ -576,7 +583,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return Query
      */
-    protected static function getWriteQuery()
+    protected static function getWriteQuery(): Query
     {
         $q = (new Query(Util::getConnection(static::$SimpleObjectConfigNameWrite)));
         $q->throwExceptionOnError(true);
@@ -589,7 +596,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return bool
      * @throws Exception
      */
-    public function delete()
+    public function delete(): bool
     {
         if (!$this->isExistInStorage()) {
             return false;
@@ -610,7 +617,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return array
      * @throws Exception
      */
-    public function __toArray()
+    public function __toArray(): array
     {
         $result = [];
         foreach ($this->values as $tableFieldName => $value) {
@@ -633,13 +640,13 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return mixed
      */
-    public function current()
+    public function current(): mixed
     {
         $property = current(static::$propertiesMapping);
         if (static::isPropertyExist($property)) {
             try {
                 return $this->__get($property);
-            } catch (Exception $e) {
+            } catch (Exception) {
             }
         }
         return false;
@@ -648,13 +655,13 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return mixed
      */
-    public function next()
+    public function next(): mixed
     {
         $property = next(static::$propertiesMapping);
         if (static::isPropertyExist($property)) {
             try {
                 return $this->__get($property);
-            } catch (Exception $e) {
+            } catch (Exception) {
             }
 
         }
@@ -672,9 +679,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * @return mixed
+     * @return int|string|null
      */
-    public function key()
+    public function key(): null|int|string
     {
         return key(static::$propertiesMapping);
     }
@@ -684,7 +691,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return bool
      */
-    public function offsetExists($offset)
+    public function offsetExists(mixed $offset): bool
     {
         return (static::isPropertyExist($offset) || static::isTableFieldExist($offset));
     }
@@ -692,14 +699,14 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @param mixed $offset
      *
-     * @return bool|mixed
+     * @return mixed
      */
-    public function offsetGet($offset)
+    public function offsetGet(mixed $offset): mixed
     {
         if (static::isPropertyExist($offset) || static::isTableFieldExist($offset)) {
             try {
                 return $this->__get($offset);
-            } catch (Exception $e) {
+            } catch (Exception) {
             }
         }
         return false;
@@ -708,16 +715,13 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @param mixed $offset
      * @param mixed $value
-     *
-     * @return bool|mixed
      */
-    public function offsetSet($offset, $value)
+    public function offsetSet(mixed $offset, mixed $value)
     {
         try {
-            return $this->__set($offset, $value);
-        } catch (Exception $e) {
+            $this->__set($offset, $value);
+        } catch (Exception) {
         }
-        return false;
     }
 
     /**
@@ -725,7 +729,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return bool
      */
-    public function offsetUnset($offset)
+    public function offsetUnset(mixed $offset): bool
     {
         return false;
     }
@@ -733,7 +737,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return int
      */
-    public function count()
+    public function count(): int
     {
         return count(static::$propertiesMapping);
     }
