@@ -92,7 +92,7 @@ class PDO extends \PDO
     {
         $this->queries_count++;
         $time = $end - $start;
-        $this->total_query_time += $time;
+        $this->total_query_time += (int) round($time);
         if ($time > $this->longest_query_time) {
             $this->longest_query_time = $time;
             $this->longest_query = $query;
@@ -122,10 +122,10 @@ class PDO extends \PDO
      * @param string $query
      * @param int|null $fetchMode
      * @param mixed ...$fetchModeArgs
-     * @return \PDOStatement
+     * @return PDOStatement|false
      * @noinspection PhpHierarchyChecksInspection
      */
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs)
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs):  PDOStatement|false
     {
         $start = $this->getMicro();
         $result = parent::query($query, $fetchMode, ...$fetchModeArgs);
@@ -133,5 +133,6 @@ class PDO extends \PDO
         $this->registerTime($start, $end, $query);
         return $result;
     }
+
 
 }

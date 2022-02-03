@@ -39,19 +39,19 @@ class PDOStatement extends \PDOStatement
     }
 
     /**
-     * @param mixed $bound_input_params
+     * @param mixed $params
      *
      * @return bool
      * @throws \Exception
      * @internal param array|null $input_parameters
      */
-    public function execute($bound_input_params = NULL)
+    public function execute(?array $params = NULL): bool
     {
         $start = $this->pdo->getMicro();
         try {
-            $result = parent::execute($bound_input_params);
+            $result = parent::execute($params);
         } catch (\Exception $e) {
-            $this->pdo->log('Error: ' . $e->getMessage() . ' ' . $this->queryString, ['bind' => $bound_input_params]);
+            $this->pdo->log('Error: ' . $e->getMessage() . ' ' . $this->queryString, ['bind' => $params]);
             throw $e;
         }
         $end = $this->pdo->getMicro();
