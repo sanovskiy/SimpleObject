@@ -94,7 +94,7 @@ class PDO extends \PDO
         $time = $end - $start;
         $this->total_query_time += (int) round($time);
         if ($time > $this->longest_query_time) {
-            $this->longest_query_time = $time;
+            $this->longest_query_time = (int) round($time);
             $this->longest_query = $query;
         }
         $this->log($query, ['total_time' => $time, 'start' => $start, 'end' => $end]);
