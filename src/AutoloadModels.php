@@ -26,7 +26,7 @@ class AutoloadModels
      * Registers autoloader for SimpleObject
      * @return bool
      */
-    public static function register()
+    public static function register(): bool
     {
         return spl_autoload_register(['Sanovskiy\\SimpleObject\\AutoloadModels', 'autoload']);
     }
@@ -50,7 +50,6 @@ class AutoloadModels
         if (!file_exists($classFilepath)) {
             throw new Exception('Class ' . $classname . ' not found. You must generate models first to use it');
         }
-        /** @noinspection PhpIncludeInspection */
         require $classFilepath;
 
         return true;
@@ -61,10 +60,10 @@ class AutoloadModels
      *
      * @return string|bool
      */
-    protected static function detectConfig(string $classname)
+    protected static function detectConfig(string $classname): bool|string
     {
         foreach (Util::getConfigNames() as $config) {
-            if (strpos($classname, Util::getSettingsValue('models_namespace', $config)) === 0) {
+            if (str_starts_with($classname, Util::getSettingsValue('models_namespace', $config))) {
                 return $config;
             }
         }

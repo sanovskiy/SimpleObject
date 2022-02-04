@@ -37,16 +37,14 @@ class Transform
     }
 
     /**
-     * @param $value
+     * @param string $value
      *
-     * @return mixed
+     * @return string|array|null
      * @noinspection PhpUnused
      */
-    public static function urlCorrect($value)
+    public static function urlCorrect(string $value): string|array|null
     {
-        $value = preg_replace("/^https?:\/\/?/", "", $value);
-        //$value = preg_replace ( "/^www\./", "", $value );
-        return $value;
+        return preg_replace("/^https?:\/\/?/", "", $value);
     }
 
     /**
@@ -54,7 +52,7 @@ class Transform
      *
      * @return int|null
      */
-    public static function date2time($value)
+    public static function date2time($value): ?int
     {
         if (empty($value)) {
             return null;
@@ -63,12 +61,12 @@ class Transform
     }
 
     /**
-     * @param       $value
+     * @param int $value
      * @param array $options
      *
      * @return bool|null|string
      */
-    public static function time2date(int $value, array $options = [])
+    public static function time2date(?int $value, array $options = []): bool|string|null
     {
         if (is_null($value)) {
             return null;

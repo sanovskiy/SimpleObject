@@ -13,6 +13,7 @@ use ArrayAccess;
 use Countable;
 use Envms\FluentPDO\Query;
 use Iterator;
+use JetBrains\PhpStorm\Pure;
 
 /**
  * Class ActiveRecordAbstract
@@ -88,7 +89,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return bool
      * @throws Exception
      */
-    protected function load($forceLoad = false): bool
+    protected function load(bool $forceLoad = false): bool
     {
         if (null === $this->Id) {
             return false;
@@ -148,19 +149,14 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             return $this->values[$name];
         }
 
-        switch ($name) {
-            case 'TableName':
-                return static::$TableName;
-            case 'TableFields':
-                return array_keys(static::$propertiesMapping);
-            case 'Properties':
-                return array_values(static::$propertiesMapping);
-            case 'SimpleObjectConfigNameRead':
-                return static::$SimpleObjectConfigNameRead;
-            case 'SimpleObjectConfigNameWrite':
-                return static::$SimpleObjectConfigNameWrite;
-        }
-        return null;
+        return match ($name) {
+            'TableName' => static::$TableName,
+            'TableFields' => array_keys(static::$propertiesMapping),
+            'Properties' => array_values(static::$propertiesMapping),
+            'SimpleObjectConfigNameRead' => static::$SimpleObjectConfigNameRead,
+            'SimpleObjectConfigNameWrite' => static::$SimpleObjectConfigNameWrite,
+            default => null,
+        };
     }
 
     /**
@@ -237,7 +233,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param bool $applyTransforms
      * @param bool $isNewRecord
      */
-    public function populate(array $data, $applyTransforms = true, $isNewRecord = false)
+    public function populate(array $data, bool $applyTransforms = true, bool $isNewRecord = false)
     {
         if (!$isNewRecord) {
             $this->loadedValues = $data;
@@ -306,14 +302,14 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * @param $field
-     * @param $transformName
-     * @param $transformOptions
+     * @param string $field
+     * @param string $transformName
+     * @param mixed $transformOptions
      *
      * @return bool
      * @noinspection PhpUnused It's used
      */
-    public static function setReadTransform(string $field, string $transformName, $transformOptions): bool
+    public static function setReadTransform(string $field, string $transformName, mixed $transformOptions): bool
     {
         if (!static::isTableFieldExist($field)) {
             return false;
@@ -423,17 +419,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 case '(not null)':
                     $select->where($value . ' IS NOT NULL');
                     continue 2;
-/*                case '(!!simulate)':
-                    $returnQuery = true;
-                    break;*/
+                /*                case '(!!simulate)':
+                                    $returnQuery = true;
+                                    break;*/
                 default:
                     $select->where($condition, $value);
                     break;
             }
         }
-/*        if ($returnQuery) {
-            return $select;
-        }*/
+        /*        if ($returnQuery) {
+                    return $select;
+                }*/
         $result = new Collection();
         foreach ($select as $_row) {
             $entity = new static();
@@ -449,7 +445,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return bool
      * @noinspection PhpUnused - It's used
      */
-    public function __isset($name): bool
+    #[Pure] public function __isset($name): bool
     {
         if (!static::isPropertyExist($name)) {
             return false;
@@ -477,7 +473,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return bool
      * @throws Exception
      */
-    public function save($force = false): bool
+    public function save(bool $force = false): bool
     {
         $data = $this->getDataForSave();
         // Filtering nulls
@@ -535,7 +531,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return array|null
      */
-    public function getDataForSave($applyTransforms = true): ?array
+    public function getDataForSave(bool $applyTransforms = true): ?array
     {
         $data = [];
         foreach (array_keys(static::$propertiesMapping) as $tableFieldName) {
@@ -632,7 +628,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      *
      */
-    public function rewind()
+    public function rewind(): void
     {
         reset(static::$propertiesMapping);
     }
@@ -655,33 +651,31 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return mixed
      */
-    public function next(): mixed
+    public function next(): void
     {
         $property = next(static::$propertiesMapping);
         if (static::isPropertyExist($property)) {
             try {
-                return $this->__get($property);
+                $this->__get($property);
+                return;
             } catch (Exception) {
             }
-
         }
-
-        return false;
     }
 
     /**
      * @return bool
      */
-    public function valid(): bool
+    #[Pure] public function valid(): bool
     {
         $key = $this->key();
         return ($key !== null && $key !== false);
     }
 
     /**
-     * @return int|string|null
+     * @return int|string|null|bool
      */
-    public function key(): null|int|string
+    public function key(): null|int|string|bool
     {
         return key(static::$propertiesMapping);
     }
@@ -691,7 +685,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return bool
      */
-    public function offsetExists(mixed $offset): bool
+    #[Pure] public function offsetExists(mixed $offset): bool
     {
         return (static::isPropertyExist($offset) || static::isTableFieldExist($offset));
     }
@@ -716,7 +710,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param mixed $offset
      * @param mixed $value
      */
-    public function offsetSet(mixed $offset, mixed $value)
+    public function offsetSet(mixed $offset, mixed $value): void
     {
         try {
             $this->__set($offset, $value);
@@ -727,11 +721,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @param mixed $offset
      *
-     * @return bool
+     * @return void
      */
-    public function offsetUnset(mixed $offset): bool
+    public function offsetUnset(mixed $offset): void
     {
-        return false;
+
     }
 
     /**
