@@ -133,7 +133,7 @@ class ModelGenerator
 
                 $LogicModel = new ClassType($tableInfo['class_name']);
                 $LogicModel
-                    ->setExtends(['Base_' . $tableInfo['class_name']=>$tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name']])
+                    ->setExtends('Base_' . $tableInfo['class_name'])
                     ->setName($tableInfo['class_name'])
                     ->setComment(sprintf("LogicModel class for table %s", $tableInfo['table_name']));
 
