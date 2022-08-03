@@ -17,7 +17,7 @@
  */
 class Transform
 {
-    public static function apply_transform(string $transform, $value, $options = [])
+    public static function apply_transform($transform, $value, $options = [])
     {
         if (method_exists(static::class, $transform)) {
             return call_user_func([static::class, $transform], $value, $options);
@@ -42,7 +42,7 @@ class Transform
      * @return string|array|null
      * @noinspection PhpUnused
      */
-    public static function urlCorrect(string $value): string|array|null
+    public static function urlCorrect( $value)
     {
         return preg_replace("/^https?:\/\/?/", "", $value);
     }
@@ -52,7 +52,7 @@ class Transform
      *
      * @return int|null
      */
-    public static function date2time($value): ?int
+    public static function date2time($value)
     {
         if (empty($value)) {
             return null;
@@ -66,7 +66,7 @@ class Transform
      *
      * @return bool|null|string
      */
-    public static function time2date(?int $value, array $options = []): bool|string|null
+    public static function time2date( $value,  $options = [])
     {
         if (is_null($value)) {
             return null;
@@ -100,7 +100,7 @@ class Transform
      *
      * @return float
      */
-    public static function div(int|float $value, array $options = [])
+    public static function div ($value, $options = [])
     {
         $divider = $options [1];
         if ($divider == 0) {
@@ -113,7 +113,7 @@ class Transform
      * @param       $value
      * @param array $options
      *
-     * @return mixed
+     * @return float|int
      */
     public static function mult($value, $options = [])
     {
@@ -127,7 +127,7 @@ class Transform
      * @return bool
      * @noinspection PhpUnused
      */
-    public static function pgbool2bool(string $value): bool
+    public static function pgbool2bool( $value)
     {
         return 't' === strtolower($value);
     }
@@ -138,7 +138,7 @@ class Transform
      * @return string
      * @noinspection PhpUnused
      */
-    public static function bool2pgbool(bool $value)
+    public static function bool2pgbool( $value)
     {
         return $value ? 't' : 'f';
     }
@@ -159,7 +159,7 @@ class Transform
      * @return string
      * @noinspection PhpUnused
      */
-    public static function digit2textboolean($value): string
+    public static function digit2textboolean($value)
     {
         return (0 >= $value) ? 'false' : 'true';
     }
@@ -170,7 +170,7 @@ class Transform
      * @return int
      * @noinspection PhpUnused
      */
-    public static function boolean2digit(bool $value)
+    public static function boolean2digit( $value)
     {
         return $value ? 1 : 0;
     }
@@ -180,12 +180,12 @@ class Transform
      *
      * @return string
      */
-    public static function boolean2text(bool $value): string
+    public static function boolean2text( $value)
     {
         return $value ? 'true' : 'false';
     }
 
-    public static function text2boolean(bool $value): string
+    public static function text2boolean( $value)
     {
         return 'true' === strtolower($value);
     }
@@ -206,7 +206,7 @@ class Transform
      *
      * @return mixed
      */
-    public static function unjsonize(?string $value=null)
+    public static function unjsonize( $value=null)
     {
         if ($value===null){
             return 'null';
@@ -238,11 +238,11 @@ class Transform
      * @param string $string
      * @param array  $options
      *
-     * @return mixed|string
+     * @return array|string|string[]
      */
-    static public function CCName(string $string, $options = [])
+    static public function CCName( $string, $options = [])
     {
-        $firstCharUpper = isset($options[0]) ? !!$options[0] : true;
+        $firstCharUpper = !isset($options[0]) || !!$options[0];
         $s = strtolower($string);
         $s = str_replace(array('_', '-', '/'), array(' ', ' ', '_'), $s);
         $s = ucwords($s);

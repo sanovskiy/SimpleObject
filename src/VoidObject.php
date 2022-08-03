@@ -22,11 +22,11 @@ class VoidObject
     }
 
     /**
-     * @return $this
+     * @return null
      */
     public function __invoke()
     {
-        return $this;
+        return null;
     }
 
     /**

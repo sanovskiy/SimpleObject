@@ -17,7 +17,9 @@
  *
  */
 
-use Sanovskiy\Traits\{ArrayAccess, Countable, Iterator};
+use Sanovskiy\Traits\ArrayAccess;
+use Sanovskiy\Traits\Countable;
+use Sanovskiy\Traits\Iterator;
 
 /**
  * Class Collection
@@ -27,27 +29,30 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 {
     use Iterator, ArrayAccess, Countable;
 
-    protected const ERROR_LOCKED = 'Collection is locked. You can\'t modify elements list';
-    protected const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
-    protected const ERROR_CLASS_NOT_FOUND = 'Class not found';
+    const ERROR_LOCKED = 'Collection is locked. You can\'t modify elements list';
+    const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
+    const ERROR_CLASS_NOT_FOUND = 'Class not found';
 
     /**
      * @var string|null
      */
-    protected ?string $className = null;
+    protected $className = null;
 
     /**
      * @var bool
      */
-    protected bool $isLocked = false;
+    protected  $isLocked = false;
 
     /**
      * @var bool
      */
-    protected bool $isUnlockable = true;
+    protected  $isUnlockable = true;
 
     //<editor-fold desc="Collection interface">
-    private array $returnedIdList = [];
+    /**
+     * @var array
+     */
+    private $returnedIdList = [];
 
     /**
      * SimpleObject_Collection constructor.
@@ -55,7 +60,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @param array $data Elements array
      * @param string|null $forceClass
      */
-    public function __construct(array $data = [], ?string $forceClass = null)
+    public function __construct($data = [], $forceClass = null)
     {
         if ($forceClass !== null) {
             $this->className = $forceClass;
@@ -78,7 +83,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection
      */
-    public function lock(bool $disallowUnlock = false): Collection
+    public function lock($disallowUnlock = false)
     {
         $this->isLocked = true;
         if ($disallowUnlock) {
@@ -92,7 +97,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function unlock(): Collection
+    public function unlock()
     {
         if (!$this->isUnlockable) {
             throw new Exception('Collection is not unlockable.');
@@ -109,7 +114,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function setClassName(string $name): Collection
+    public function setClassName($name)
     {
         if (empty($name)) {
             return $this;
@@ -134,9 +139,9 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return null
      */
-    public function getElement(int $n = 0)
+    public function getElement($n = 0)
     {
-        return $this->records[$n] ?? null;
+        return isset($this->records[$n]) ? $this->records[$n] : null;
     }
 
     /**
@@ -157,7 +162,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * @return void
      */
-    public function resetRandom(): void
+    public function resetRandom()
     {
         $this->returnedIdList = [];
     }
@@ -201,7 +206,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return bool
      * @throws Exception
      */
-    public function unshift($value): bool
+    public function unshift($value)
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
@@ -209,7 +214,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         if (!is_object($value)) {
             return false;
         }
-        if ($this->className === null || empty($this->className)) {
+        if (empty($this->className)) {
             $this->className = get_class($value);
         }
         if (!($value instanceof $this->className) && !is_subclass_of($value, $this->className)) {
@@ -227,7 +232,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return void
      * @throws Exception
      */
-    public function reindexByField($reverse = false, $field = 'Id'): void
+    public function reindexByField($reverse = false, $field = 'Id')
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
@@ -253,7 +258,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return array
      */
-    public function callForEach(string $method, array $args = []): array
+    public function callForEach($method, $args = [])
     {
         $reply = [];
         for ($index = 0, $indexMax = count($this->records); $index < $indexMax; $index++) {
@@ -268,7 +273,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return void
      */
-    public function setForEach($property, $value = null): void
+    public function setForEach($property, $value = null)
     {
         foreach ($this->records as $indexValue) {
             $indexValue->{$property} = $value;
@@ -282,7 +287,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function getElementsByPropertyValue(string $property, $value): Collection
+    public function getElementsByPropertyValue($property, $value)
     {
         $elements = new self;
         foreach ($this->records as $indexValue) {
@@ -302,7 +307,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return bool
      * @throws Exception
      */
-    public function push($value): bool
+    public function push($value)
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
@@ -310,7 +315,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
         if (!is_object($value)) {
             return false;
         }
-        if ($this->className === null || empty($this->className)) {
+        if (empty($this->className)) {
             $this->className = get_class($value);
         }
         if (!($value instanceof $this->className)) {
@@ -327,7 +332,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function getElementsByFunctionResult(string $method, $value): Collection
+    public function getElementsByFunctionResult($method, $value)
     {
         $elements = new self;
         foreach ($this->records as $indexValue) {
@@ -344,7 +349,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * @return array
      */
-    public function getAllRecords(): array
+    public function getAllRecords()
     {
         return $this->records;
     }
@@ -354,7 +359,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return array
      */
-    public function getFromEach(string|array $property): array
+    public function getFromEach($property)
     {
         $values = [];
         foreach ($this->records as $index => $element) {

@@ -7,13 +7,14 @@
   ],
   "license": "Apache-2.0",
   "require": {
-    "php": "~8.0",
+    "php": "~5.6",
     "ext-pdo": "*",
     "ext-json": "*",
     "sanovskiy/traitlib": "*",
     "envms/fluentpdo": "*",
     "league/climate": "*",
-    "nette/php-generator": "^3.5"
+    "nette/php-generator": "*",
+    "paragonie/random_compat": "^2.0"
   },
   "require-dev": {
     "robmorgan/phinx": "*",

@@ -26,7 +26,7 @@ class AutoloadModels
      * Registers autoloader for SimpleObject
      * @return bool
      */
-    public static function register(): bool
+    public static function register()
     {
         return spl_autoload_register(['Sanovskiy\\SimpleObject\\AutoloadModels', 'autoload']);
     }
@@ -37,7 +37,7 @@ class AutoloadModels
      * @return bool
      * @throws Exception
      */
-    public static function autoload(string $classname): bool
+    public static function autoload( $classname)
     {
         if (!($config = self::detectConfig($classname))) {
             return false;
@@ -60,10 +60,11 @@ class AutoloadModels
      *
      * @return string|bool
      */
-    protected static function detectConfig(string $classname): bool|string
+    protected static function detectConfig( $classname)
     {
         foreach (Util::getConfigNames() as $config) {
-            if (str_starts_with($classname, Util::getSettingsValue('models_namespace', $config))) {
+
+            if (strpos( $classname ,  Util::getSettingsValue('models_namespace', $config)) === 0) {
                 return $config;
             }
         }

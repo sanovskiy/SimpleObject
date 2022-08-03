@@ -25,15 +25,15 @@ use Monolog\Logger;
 class PDO extends \PDO
 {
 
-    protected int $queries_count = 0;
-    protected int $total_query_time = 0;
-    protected string $longest_query = '';
-    protected int $longest_query_time = 0;
+    protected $queries_count = 0;
+    protected $total_query_time = 0;
+    protected $longest_query = '';
+    protected $longest_query_time = 0;
 
     /**
      * @var Logger|null
      */
-    protected ?Logger $logger = null;
+    protected $logger = null;
 
     /**
      * Sanovskiy\SimpleObject\PDO constructor.
@@ -46,7 +46,7 @@ class PDO extends \PDO
     public function __construct($dsn, $username = '', $password = '', $driver_options = array())
     {
         parent::__construct($dsn, $username, $password, $driver_options);
-        $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('Sanovskiy\SimpleObject\PDOStatement', array($this)));
+        $this->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array('Sanovskiy\SimpleObject\PDOStatement', array($this)));
     }
 
     public function setLogger(Logger $logger)
@@ -54,7 +54,7 @@ class PDO extends \PDO
         $this->logger = $logger;
     }
 
-    public function log(string $string, array $context = [])
+    public function log( $string,  $context = [])
     {
         if ($this->logger instanceof Logger) {
             $this->logger->info($string,$context);
@@ -65,7 +65,7 @@ class PDO extends \PDO
      * @return array
      * @noinspection PhpUnused - It's used
      */
-    public function getUsageInfo(): array
+    public function getUsageInfo()
     {
         return [
             'TotalQueries'     => $this->queries_count,
@@ -78,7 +78,7 @@ class PDO extends \PDO
     /**
      * @return float
      */
-    public function getMicro(): float
+    public function getMicro()
     {
         return microtime(true);
     }
@@ -88,7 +88,7 @@ class PDO extends \PDO
      * @param float $end
      * @param string $query
      */
-    public function registerTime(float $start, float $end, string $query = '')
+    public function registerTime( $start,  $end,  $query = '')
     {
         $this->queries_count++;
         $time = $end - $start;
@@ -104,9 +104,8 @@ class PDO extends \PDO
      * @param string $statement
      *
      * @return int
-     * @noinspection PhpMissingParamTypeInspection - PDO method has bad sinature
      */
-    public function exec($statement): int
+    public function exec($statement)
     {
         $start = $this->getMicro();
         $result = parent::exec($statement);
@@ -119,18 +118,18 @@ class PDO extends \PDO
      * Overloads parent query method to add some profiling
      * Some IDEs can mark declaration of this method as incopatible with parent. That's not true.
      *
-     * @param string $query
-     * @param int|null $fetchMode
-     * @param mixed ...$fetchModeArgs
-     * @return PDOStatement|false
-     * @noinspection PhpHierarchyChecksInspection
+     * @param $statement
+     * @param null $mode
+     * @param null $arg3
+     * @param array $ctorargs
+     * @return false|\PDOStatement
      */
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs):  PDOStatement|false
+    public function query( $statement,  $mode = null, $arg3 = null, array $ctorargs = [])
     {
         $start = $this->getMicro();
-        $result = parent::query($query, $fetchMode, ...$fetchModeArgs);
+        $result = parent::query($statement, $mode, $arg3,$ctorargs);
         $end = $this->getMicro();
-        $this->registerTime($start, $end, $query);
+        $this->registerTime($start, $end, $statement);
         return $result;
     }
 

@@ -27,14 +27,14 @@ class Util
     /**
      * @var array
      */
-    protected static array $restrictedConfigNames = [
+    protected static $restrictedConfigNames = [
         'base'
     ];
 
     /**
      * @var array
      */
-    private static array $default_settings = [
+    private static $default_settings = [
         'dbcon' => [
             'driver' => 'mysql',
             'host' => 'localhost',
@@ -54,7 +54,7 @@ class Util
     /**
      * @var array
      */
-    private static array $settings = [
+    private static $settings = [
         'default' => []
     ];
 
@@ -62,7 +62,7 @@ class Util
      * Database connection
      * @var PDO[]
      */
-    private static array $connections = [
+    private static $connections = [
         'default' => null
     ];
 
@@ -148,7 +148,7 @@ class Util
      * @param string $configName
      * @return null
      */
-    public static function getSettingsValue(string $name, $configName = 'default')
+    public static function getSettingsValue($name, $configName = 'default')
     {
         if (isset(self::$settings[$configName][$name])) {
             return self::$settings[$configName][$name];
@@ -163,7 +163,7 @@ class Util
      * @param bool $silent
      * @throws Exception
      */
-    public static function reverseEngineerModels(bool $silent = false)
+    public static function reverseEngineerModels($silent = false)
     {
         if ("cli" !== php_sapi_name()) {
             throw new Exception('You can call this method only in CLI');

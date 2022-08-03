@@ -21,7 +21,6 @@
 use League\CLImate\CLImate;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpNamespace;
-use Nette\PhpGenerator\PsrPrinter;
 use RuntimeException;
 
 class ModelGenerator
@@ -29,16 +28,16 @@ class ModelGenerator
     /**
      * @var string
      */
-    protected string $configName;
+    protected $configName;
 
     /**
      * @var CLImate|VoidObject
      */
-    protected VoidObject|CLImate $output;
+    protected $output;
     /**
      * @var bool
      */
-    private bool $isSilent;
+    private $isSilent;
 
     /**
      * ModelGenerator constructor.
@@ -46,7 +45,7 @@ class ModelGenerator
      * @param string $configName
      * @param bool $silent
      */
-    public function __construct(string $configName, bool $silent = false)
+    public function __construct( $configName,  $silent = false)
     {
         $this->configName = $configName;
 
@@ -59,7 +58,7 @@ class ModelGenerator
     }
 
 
-    public function run(): void
+    public function run()
     {
         try {
             if (null === Util::getSettingsValue('read_connection',
@@ -94,9 +93,7 @@ class ModelGenerator
                 throw new Exception($stmt->errorInfo()[2]);
             }
 
-            $tables = $stmt->fetchAll(PDO::FETCH_NUM);
-
-            $printer = new PsrPrinter();
+            $tables = $stmt->fetchAll(\PDO::FETCH_NUM);
 
             $this->output->out('Generating files:');
             foreach ($tables as $tableRow) {
@@ -142,9 +139,8 @@ class ModelGenerator
 
                 $LogicNamespace = new PhpNamespace($tableInfo['class_namespace']);
                 $LogicNamespace->addUse($tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name'],'Base_' . $tableInfo['class_name']);
-                $LogicNamespace->add($LogicModel);
 
-                $this->writeModel($tableInfo['file_name'], $printer->printNamespace($LogicNamespace), false);
+                $this->writeModel($tableInfo['file_name'], $LogicNamespace.$LogicModel,false);
 
                 $this->output->inline('[<green>Logic</green>] ');
 
@@ -154,7 +150,6 @@ class ModelGenerator
                     ->setAbstract(true);
                 $BaseNamespace = new PhpNamespace($tableInfo['base_class_namespace']);
                 $BaseNamespace->addUse($tableInfo['base_class_extends']);
-                $BaseNamespace->add($BaseModel);
 
                 $writeConfigName = $this->configName;
                 $readConfigName = Util::getSettingsValue('read_connection', $this->configName);
@@ -166,25 +161,22 @@ class ModelGenerator
                 if ($writeConfigName !== 'default') {
                     $BaseModel
                         ->addProperty('SimpleObjectConfigNameWrite',$writeConfigName)
-                        ->setProtected()
+                        ->setVisibility('protected')
                         ->addComment('Config name for write connection')
                         ->setStatic()
-                        ->setType('string')
                     ;
                 }
                 if ($readConfigName !== 'default') {
                     $BaseModel
                         ->addProperty('SimpleObjectConfigNameRead',$readConfigName)
-                        ->setProtected()
+                        ->setVisibility('protected')
                         ->addComment('Config name for read connection')
                         ->setStatic()
-                        ->setType('string')
                     ;
                 }
                 $BaseModel
                     ->addProperty('TableName',$tableInfo['table_name'])
-                    ->setType('string')
-                    ->setProtected()
+                    ->setVisibility('protected')
                     ->setStatic()
                     ->addComment('Model database table name')
                 ;
@@ -217,7 +209,7 @@ class ModelGenerator
                 $stmt = Util::getConnection($this->configName)->prepare($sql);
                 $stmt->execute($bind);
 
-                $fields = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $fields = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
                 foreach ($fields as $num => $_row) {
 
@@ -278,15 +270,13 @@ class ModelGenerator
                 }
                 $BaseModel
                     ->addProperty('propertiesMapping',$propertiesMapping)
-                    ->setType('array')
-                    ->setProtected()
+                    ->setVisibility('protected')
                     ->addComment('Model properties for table field mapping')
                     ->setStatic()
                 ;
                 $BaseModel
                     ->addProperty('dataTransformRules',$dataTransformRules)
-                    ->setProtected()
-                    ->setType('array')
+                    ->setVisibility('protected')
                     ->addComment('Transformations for reading and writing')
                     ->setStatic()
                 ;
@@ -302,7 +292,7 @@ class ModelGenerator
                     $BaseModel->addComment($_);
                 }
 
-                $this->writeModel($tableInfo['file_name'], $printer->printNamespace($BaseNamespace), true);
+                $this->writeModel($tableInfo['file_name'], $BaseNamespace.$BaseModel, true);
                 $this->output->out('[<blue>Base</blue>]');
             }
             $this->output->green('All done.');
@@ -312,7 +302,7 @@ class ModelGenerator
         }
     }
 
-    protected function prepareDirs(): void
+    protected function prepareDirs()
     {
         $modelsSuperDir = Util::getSettingsValue('path_models', $this->configName);
         if (empty($modelsSuperDir)) {
@@ -346,7 +336,7 @@ class ModelGenerator
     /**
      * @return string
      */
-    protected function getLogicModelHeader(): string
+    protected function getLogicModelHeader()
     {
         return <<<LOGICMODEL
 <?php
@@ -366,7 +356,7 @@ LOGICMODEL;
      *
      * @return bool|int
      */
-    protected function writeModel(string $filename, string $contents, $base = false): bool|int
+    protected function writeModel( $filename,  $contents, $base = false)
     {
         $path = Util::getSettingsValue('path_models',
                 $this->configName) . DIRECTORY_SEPARATOR . ($base ? 'Base' : 'Logic') . DIRECTORY_SEPARATOR . $filename;
@@ -379,7 +369,7 @@ LOGICMODEL;
     /**
      * @return string
      */
-    protected function getBaseModelHeader(): string
+    protected function getBaseModelHeader()
     {
         return <<<BASEMODEL
 <?php

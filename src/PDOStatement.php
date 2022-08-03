@@ -25,7 +25,7 @@ class PDOStatement extends \PDOStatement
     /**
      * @var PDO|null
      */
-    protected ?PDO $pdo;
+    protected $pdo;
 
 
     /**
@@ -45,7 +45,7 @@ class PDOStatement extends \PDOStatement
      * @throws \Exception
      * @internal param array|null $input_parameters
      */
-    public function execute(?array $params = NULL): bool
+    public function execute( $params = NULL)
     {
         $start = $this->pdo->getMicro();
         try {

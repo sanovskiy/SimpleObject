@@ -19,19 +19,22 @@ class RuntimeCache implements Singleton
 {
     use \Sanovskiy\Traits\Patterns\Singleton;
 
-    protected bool $disabled = false;
+    /**
+     * @var bool
+     */
+    protected $disabled = false;
 
     /**
      * @var array
      */
-    protected array $cache = [];
+    protected $cache = [];
 
     /**
      * @param string $classname
      * @param string $key
      * @param array  $data
      */
-    public function put(string $classname, string $key, array $data)
+    public function put($classname, $key, array $data)
     {
         if ($this->disabled){
             return;
@@ -45,7 +48,7 @@ class RuntimeCache implements Singleton
      *
      * @return bool
      */
-    public function get(string $classname, $key)
+    public function get($classname, $key)
     {
         if (!$this->disabled && array_key_exists($classname, $this->cache) && array_key_exists($key, $this->cache[$classname])) {
             return $this->cache[$classname][$key];
@@ -57,7 +60,7 @@ class RuntimeCache implements Singleton
      * @param string $classname
      * @param        $key
      */
-    public function drop(string $classname, $key)
+    public function drop($classname, $key)
     {
         if (array_key_exists($classname, $this->cache) && array_key_exists($key, $this->cache[$classname])) {
             unset($this->cache[$classname][$key]);
