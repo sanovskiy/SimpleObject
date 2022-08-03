@@ -1,4 +1,6 @@
-<?php namespace Sanovskiy\SimpleObject;
+<?php
+
+namespace Sanovskiy\SimpleObject;
 
 
 /**
@@ -25,11 +27,11 @@ use RuntimeException;
 
 class ModelGenerator
 {
+    const PHP_HEADER = '<?PHP' . PHP_EOL;
     /**
      * @var string
      */
     protected $configName;
-
     /**
      * @var CLImate|VoidObject
      */
@@ -45,7 +47,7 @@ class ModelGenerator
      * @param string $configName
      * @param bool $silent
      */
-    public function __construct( $configName,  $silent = false)
+    public function __construct($configName, $silent = false)
     {
         $this->configName = $configName;
 
@@ -57,16 +59,19 @@ class ModelGenerator
         }
     }
 
-
     public function run()
     {
         try {
-            if (null === Util::getSettingsValue('read_connection',
-                    $this->configName) && null !== Util::getSettingsValue('write_connection', $this->configName)) {
+            if (null === Util::getSettingsValue(
+                    'read_connection',
+                    $this->configName
+                ) && null !== Util::getSettingsValue('write_connection', $this->configName)) {
                 throw new Exception('Ignoring connection ' . $this->configName . ' marked as read_correction');
             }
             $dbSettings = Util::getSettingsValue('dbcon', $this->configName);
             $this->output->out(sprintf("Reverse engineering database %s", $dbSettings['database']));
+
+            $modelsSuperDir = Util::getSettingsValue('path_models', $this->configName);
 
             $this->prepareDirs();
             $bind = [];
@@ -101,53 +106,79 @@ class ModelGenerator
                     case 'pgsql':
                         $tableName = $tableRow[1];
                         $tableSchema = $tableRow[0];
-                        $CCName = Transform::CCName($tableName);
                         break;
                     case 'mysql':
                         $tableName = $tableRow[0];
                         $tableSchema = '';
-                        $CCName = Transform::CCName($tableName);
                         break;
                     case 'sqlsrv':
                     case 'odbc':
                         $tableName = $tableRow[0];
                         $tableSchema = $tableRow[1];
-                        $CCName = Transform::CCName($tableName);
                         break;
                     default:
                         throw new \Exception('Unsupported driver ' . $dbSettings['driver']);
                 }
 
                 $this->output->inline('Table ' . $tableName . '... ');
-
+                $modelsDirRules = Util::getSettingsValue('subfolder_rules', $this->configName);
+                $CCName = Transform::CCName($tableName);
+                $folder = '';
+                $namespacePrefix = '';
+                if ($modelsDirRules) {
+                    foreach ($modelsDirRules as $rule => $_params) {
+                        if (preg_match('/(' . $rule . ')(.+)/', $tableName, $result)) {
+                            $folder = $_params['folder'] . DIRECTORY_SEPARATOR;
+                            $namespacePrefix = $_params['folder'] . '\\';
+                            if (isset($_params['strip']) && $_params['strip']) {
+                                $CCName = Transform::CCName($result[2]);
+                            }
+                            break;
+                        }
+                    }
+                }
                 $tableInfo = [
                     'table_name' => $tableName,
+                    'dir_name' => Util::getSettingsValue(
+                            'path_models',
+                            $this->configName
+                        ) . DIRECTORY_SEPARATOR . $folder,
                     'file_name' => $CCName . '.php',
-                    'class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
-                    'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
-                    'base_class_extends' => Util::getSettingsValue('base_class_extends',
-                        $this->configName) ?: '\\'.ActiveRecordAbstract::class,
+                    'class_namespace' => Util::getSettingsValue(
+                            'models_namespace',
+                            $this->configName
+                        ) . $namespacePrefix . 'Logic',
+                    'base_class_namespace' => Util::getSettingsValue(
+                            'models_namespace',
+                            $this->configName
+                        ) . $namespacePrefix . 'Base',
+                    'base_class_extends' => Util::getSettingsValue(
+                        'base_class_extends',
+                        $this->configName
+                    ) ?: '\\' . ActiveRecordAbstract::class,
                     'class_name' => $CCName,
-                    'fields' => []
+                    'fields' => [],
                 ];
-
                 $LogicModel = new ClassType($tableInfo['class_name']);
-                $LogicModel
-                    ->setExtends('Base_' . $tableInfo['class_name'])
-                    ->setName($tableInfo['class_name'])
-                    ->setComment(sprintf("LogicModel class for table %s", $tableInfo['table_name']));
+                $LogicModel->setExtends('Base_' . $tableInfo['class_name'])->setName(
+                    $tableInfo['class_name']
+                )->setComment(sprintf("LogicModel class for table %s", $tableInfo['table_name']));
 
                 $LogicNamespace = new PhpNamespace($tableInfo['class_namespace']);
-                $LogicNamespace->addUse($tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name'],'Base_' . $tableInfo['class_name']);
+                $LogicNamespace->addUse(
+                    $tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name'],
+                    'Base_' . $tableInfo['class_name']
+                );
 
-                $this->writeModel($tableInfo['file_name'], $LogicNamespace.$LogicModel,false);
+                $this->writeModel(
+                    $tableInfo['dir_name'] . DIRECTORY_SEPARATOR . 'Logic' . DIRECTORY_SEPARATOR . $tableInfo['file_name'],
+                    $LogicNamespace . $LogicModel
+                );
 
                 $this->output->inline('[<green>Logic</green>] ');
 
                 $BaseModel = new ClassType($tableInfo['class_name']);
-                $BaseModel
-                    ->setExtends($tableInfo['base_class_extends'])
-                    ->setAbstract(true);
+                $BaseModel->setExtends($tableInfo['base_class_extends'])->setAbstract(true);
                 //die($BaseModel);
                 $BaseNamespace = new PhpNamespace($tableInfo['base_class_namespace']);
                 //$BaseNamespace->addUse($tableInfo['base_class_extends']);
@@ -160,27 +191,17 @@ class ModelGenerator
                 }
 
                 if ($writeConfigName !== 'default') {
-                    $BaseModel
-                        ->addProperty('SimpleObjectConfigNameWrite',$writeConfigName)
-                        ->setVisibility('protected')
-                        ->addComment('Config name for write connection')
-                        ->setStatic()
-                    ;
+                    $BaseModel->addProperty('SimpleObjectConfigNameWrite', $writeConfigName)->setVisibility(
+                        'protected'
+                    )->addComment('Config name for write connection')->setStatic();
                 }
                 if ($readConfigName !== 'default') {
-                    $BaseModel
-                        ->addProperty('SimpleObjectConfigNameRead',$readConfigName)
-                        ->setVisibility('protected')
-                        ->addComment('Config name for read connection')
-                        ->setStatic()
-                    ;
+                    $BaseModel->addProperty('SimpleObjectConfigNameRead', $readConfigName)->setVisibility(
+                        'protected'
+                    )->addComment('Config name for read connection')->setStatic();
                 }
-                $BaseModel
-                    ->addProperty('TableName',$tableInfo['table_name'])
-                    ->setVisibility('protected')
-                    ->setStatic()
-                    ->addComment('Model database table name')
-                ;
+                $BaseModel->addProperty('TableName', $tableInfo['table_name'])->setVisibility('protected')->setStatic(
+                )->addComment('Model database table name');
 
                 $propertiesMapping = [];
                 $Comments = [];
@@ -191,7 +212,7 @@ class ModelGenerator
 
                 $bind = [
                     ':table' => $tableName,
-                    ':database' => $dbSettings['database']
+                    ':database' => $dbSettings['database'],
                 ];
 
                 switch (strtolower($dbSettings['driver'])) {
@@ -213,7 +234,6 @@ class ModelGenerator
                 $fields = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
                 foreach ($fields as $num => $_row) {
-
                     $_row = array_change_key_case($_row, CASE_UPPER);
                     $colName = $_row['COLUMN_NAME'];
                     $propertiesMapping[$colName] = Transform::CCName($colName);
@@ -228,7 +248,7 @@ class ModelGenerator
                         case 'date':
                             $dataTransformRules[$colName] = [
                                 'read' => ['date2time' => []],
-                                'write' => ['time2date' => ['format' => 'Y-m-d']]
+                                'write' => ['time2date' => ['format' => 'Y-m-d']],
                             ];
                             $colVal[$colName] = 'integer';
                             break;
@@ -237,7 +257,7 @@ class ModelGenerator
                         case 'datetime':
                             $dataTransformRules[$colName] = [
                                 'read' => ['date2time' => []],
-                                'write' => ['time2date' => ['format' => 'Y-m-d H:i:s']]
+                                'write' => ['time2date' => ['format' => 'Y-m-d H:i:s']],
                             ];
                             $colVal[$colName] = 'integer';
                             break;
@@ -245,7 +265,7 @@ class ModelGenerator
                         case 'bit':
                             $dataTransformRules[$colName] = [
                                 'read' => ['digit2boolean' => []],
-                                'write' => ['boolean2digit' => []]
+                                'write' => ['boolean2digit' => []],
                             ];
                             $colVal[$colName] = 'boolean';
                             break;
@@ -256,7 +276,7 @@ class ModelGenerator
                         case 'jsonb':
                             $dataTransformRules[$colName] = [
                                 'read' => ['unjsonize' => []],
-                                'write' => ['jsonize' => []]
+                                'write' => ['jsonize' => []],
                             ];
                             $colVal[$colName] = 'array';
                             break;
@@ -269,22 +289,21 @@ class ModelGenerator
                         $Comments[$colName] = $_row['COLUMN_COMMENT'];
                     }
                 }
-                $BaseModel
-                    ->addProperty('propertiesMapping',$propertiesMapping)
-                    ->setVisibility('protected')
-                    ->addComment('Model properties for table field mapping')
-                    ->setStatic()
-                ;
-                $BaseModel
-                    ->addProperty('dataTransformRules',$dataTransformRules)
-                    ->setVisibility('protected')
-                    ->addComment('Transformations for reading and writing')
-                    ->setStatic()
-                ;
+                $BaseModel->addProperty('propertiesMapping', $propertiesMapping)->setVisibility(
+                    'protected'
+                )->addComment('Model properties for table field mapping')->setStatic();
+                $BaseModel->addProperty('dataTransformRules', $dataTransformRules)->setVisibility(
+                    'protected'
+                )->addComment('Transformations for reading and writing')->setStatic();
 
-                $BaseModel->addComment('Base class for model ' . $tableInfo['class_namespace'] . '\\' . $tableInfo['class_name']);
+                $BaseModel->addComment(
+                    'Base class for model ' . $tableInfo['class_namespace'] . '\\' . $tableInfo['class_name']
+                );
                 foreach ($propertiesMapping as $tableField => $property) {
-                    $_ = '@property ' . (array_key_exists($tableField, $colVal) ? $colVal[$tableField] : '') . ' $' . $property;
+                    $_ = '@property ' . (array_key_exists(
+                            $tableField,
+                            $colVal
+                        ) ? $colVal[$tableField] : '') . ' $' . $property;
 
                     if (isset($Comments[$tableField])) {
                         $_ .= sprintf(" %s", $Comments[$tableField]);
@@ -293,11 +312,14 @@ class ModelGenerator
                     $BaseModel->addComment($_);
                 }
 
-                $this->writeModel($tableInfo['file_name'], $BaseNamespace.$BaseModel, true);
+                $this->writeModel(
+                    $tableInfo['dir_name'] . DIRECTORY_SEPARATOR . 'Base' . DIRECTORY_SEPARATOR . $tableInfo['file_name'],
+                    $BaseNamespace . $BaseModel,
+                    true
+                );
                 $this->output->out('[<blue>Base</blue>]');
             }
             $this->output->green('All done.');
-
         } catch (\Exception $e) {
             $this->output->error($e->getMessage());
         }
@@ -309,47 +331,33 @@ class ModelGenerator
         if (empty($modelsSuperDir)) {
             throw new RuntimeException('path_models is empty');
         }
-        $baseModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Base';
-        $finalModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Logic';
-        if (!file_exists($baseModelsDir)) {
-            if (!mkdir($baseModelsDir, 0755, true) && !is_dir($baseModelsDir)) {
-                throw new RuntimeException(sprintf('Directory "%s" was not created', $baseModelsDir));
-            }
-        }
-        if (!file_exists($finalModelsDir)) {
-            if (!mkdir($finalModelsDir, 0755, true) && !is_dir($finalModelsDir)) {
-                throw new RuntimeException(sprintf('Directory "%s" was not created', $finalModelsDir));
-            }
-        }
 
         $this->output->bold('Removing all base models');
 
-        $dir = opendir($baseModelsDir);
-        while ($file = readdir($dir)) {
-            $filePath = $baseModelsDir . DIRECTORY_SEPARATOR . $file;
-            if (is_dir($filePath)) {
+        $this->wipeBaseModels($modelsSuperDir);
+    }
+
+    protected function wipeBaseModels($dirName)
+    {
+        $dir = new \FilesystemIterator($dirName);
+        foreach ($dir as $item) {
+            if (!$item->isDir()) {
                 continue;
             }
-            unlink($filePath);
+            if ($item->getFilename() === 'Base') {
+                $baseDir = new \FilesystemIterator($item->getRealPath());
+                foreach ($baseDir as $file) {
+                    if (!$file->isDir()) {
+                        //$this->output->red()->out($file->getRealPath());
+                        unlink($file->getRealPath());
+                    }
+                }
+                return;
+            }
+            $this->wipeBaseModels($item->getRealPath());
         }
     }
 
-    /**
-     * @return string
-     */
-    protected function getLogicModelHeader()
-    {
-        return <<<LOGICMODEL
-<?php
-/**
- * This file created automatically by SimpleObject model generator
- * This file will NOT be deleted on next models generation.
- */
-
-LOGICMODEL;
-    }
-
-    const PHP_HEADER='<?PHP'.PHP_EOL;
     /**
      * @param string $filename
      * @param string $contents
@@ -357,12 +365,17 @@ LOGICMODEL;
      *
      * @return bool|int
      */
-    protected function writeModel( $filename,  $contents, $base = false)
+    protected function writeModel($filename, $contents, $base = false)
     {
-        $path = Util::getSettingsValue('path_models',
-                $this->configName) . DIRECTORY_SEPARATOR . ($base ? 'Base' : 'Logic') . DIRECTORY_SEPARATOR . $filename;
+        $path = $filename;
+        if (!file_exists(dirname($filename))) {
+            mkdir(dirname($filename), 0755, true);
+        }
         if (!file_exists($path)) {
-            return file_put_contents($path, ($base?$this->getBaseModelHeader():$this->getLogicModelHeader()).$contents);
+            return file_put_contents(
+                $path,
+                ($base ? $this->getBaseModelHeader() : $this->getLogicModelHeader()) . $contents
+            );
         }
         return false;
     }
@@ -381,6 +394,21 @@ LOGICMODEL;
  */
 
 BASEMODEL;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getLogicModelHeader()
+    {
+        return <<<LOGICMODEL
+<?php
+/**
+ * This file created automatically by SimpleObject model generator
+ * This file will NOT be deleted on next models generation.
+ */
+
+LOGICMODEL;
     }
 
 }
