@@ -129,7 +129,7 @@ class ModelGenerator
                     foreach ($modelsDirRules as $rule => $_params) {
                         if (preg_match('/(' . $rule . ')(.+)/', $tableName, $result)) {
                             $folder = $_params['folder'] . DIRECTORY_SEPARATOR;
-                            $namespacePrefix = $_params['folder'];
+                            $namespacePrefix = str_replace('/','\\',$_params['folder']);
                             if (isset($_params['strip']) && $_params['strip']) {
                                 $CCName = Transform::CCName($result[2]);
                             }
