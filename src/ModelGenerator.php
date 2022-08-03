@@ -129,7 +129,7 @@ class ModelGenerator
                     foreach ($modelsDirRules as $rule => $_params) {
                         if (preg_match('/(' . $rule . ')(.+)/', $tableName, $result)) {
                             $folder = $_params['folder'] . DIRECTORY_SEPARATOR;
-                            $namespacePrefix = $_params['folder'] . '\\';
+                            $namespacePrefix = $_params['folder'];
                             if (isset($_params['strip']) && $_params['strip']) {
                                 $CCName = Transform::CCName($result[2]);
                             }
@@ -142,16 +142,16 @@ class ModelGenerator
                     'dir_name' => Util::getSettingsValue(
                             'path_models',
                             $this->configName
-                        ) . DIRECTORY_SEPARATOR . $folder,
-                    'file_name' => $CCName . '.php',
+                        ),
+                    'file_name' => $folder.DIRECTORY_SEPARATOR.$CCName . '.php',
                     'class_namespace' => Util::getSettingsValue(
                             'models_namespace',
                             $this->configName
-                        ) . $namespacePrefix . 'Logic',
+                        ) . 'Logic\\'.$namespacePrefix,
                     'base_class_namespace' => Util::getSettingsValue(
                             'models_namespace',
                             $this->configName
-                        ) . $namespacePrefix . 'Base',
+                        ) . 'Base\\'.$namespacePrefix,
                     'base_class_extends' => Util::getSettingsValue(
                         'base_class_extends',
                         $this->configName
@@ -341,20 +341,16 @@ class ModelGenerator
     {
         $dir = new \FilesystemIterator($dirName);
         foreach ($dir as $item) {
-            if (!$item->isDir()) {
-                continue;
+            if ($item->isDir()) {
+                $this->wipeBaseModels($item->getRealPath());
             }
-            if ($item->getFilename() === 'Base') {
-                $baseDir = new \FilesystemIterator($item->getRealPath());
-                foreach ($baseDir as $file) {
-                    if (!$file->isDir()) {
-                        //$this->output->red()->out($file->getRealPath());
-                        unlink($file->getRealPath());
-                    }
+            $baseDir = new \FilesystemIterator($item->getRealPath());
+            foreach ($baseDir as $file) {
+                if (!$file->isDir()) {
+                    $this->output->red()->out($file->getRealPath());
+                    unlink($file->getRealPath());
                 }
-                return;
             }
-            $this->wipeBaseModels($item->getRealPath());
         }
     }
 
