@@ -126,7 +126,7 @@ class ModelGenerator
                     'class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Logic',
                     'base_class_namespace' => Util::getSettingsValue('models_namespace', $this->configName) . 'Base',
                     'base_class_extends' => Util::getSettingsValue('base_class_extends',
-                        $this->configName) ?: ActiveRecordAbstract::class,
+                        $this->configName) ?: '\\'.ActiveRecordAbstract::class,
                     'class_name' => $CCName,
                     'fields' => []
                 ];
@@ -148,8 +148,9 @@ class ModelGenerator
                 $BaseModel
                     ->setExtends($tableInfo['base_class_extends'])
                     ->setAbstract(true);
+                //die($BaseModel);
                 $BaseNamespace = new PhpNamespace($tableInfo['base_class_namespace']);
-                $BaseNamespace->addUse($tableInfo['base_class_extends']);
+                //$BaseNamespace->addUse($tableInfo['base_class_extends']);
 
                 $writeConfigName = $this->configName;
                 $readConfigName = Util::getSettingsValue('read_connection', $this->configName);
