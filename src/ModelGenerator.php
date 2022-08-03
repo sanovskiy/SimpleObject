@@ -334,7 +334,10 @@ class ModelGenerator
 
         $this->output->bold('Removing all base models');
 
-        $this->wipeBaseModels($modelsSuperDir);
+        if(file_exists($modelsSuperDir.DIRECTORY_SEPARATOR.'Base')){
+            $this->wipeBaseModels($modelsSuperDir.DIRECTORY_SEPARATOR.'Base');
+        }
+
     }
 
     protected function wipeBaseModels($dirName)
@@ -343,14 +346,11 @@ class ModelGenerator
         foreach ($dir as $item) {
             if ($item->isDir()) {
                 $this->wipeBaseModels($item->getRealPath());
+                rmdir($item->getRealPath());
+                continue;
             }
-            $baseDir = new \FilesystemIterator($item->getRealPath());
-            foreach ($baseDir as $file) {
-                if (!$file->isDir()) {
-                    $this->output->red()->out($file->getRealPath());
-                    unlink($file->getRealPath());
-                }
-            }
+            //$this->output->red()->out($item->getRealPath());
+            unlink($item->getRealPath());
         }
     }
 
