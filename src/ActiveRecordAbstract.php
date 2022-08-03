@@ -95,6 +95,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return true;
     }
 
+    public static function getIdField()
+    {
+        return array_keys(static::$propertiesMapping)[0];
+    }
+
     /**
      * Loads model data from storage
      *
@@ -113,7 +118,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $builder = new GenericBuilder();
                 $query = $builder->select();
                 $query->setTable(static::$TableName)->setColumns(array_keys(static::$propertiesMapping));
-                $query->where()->eq('id',$this->__get($this->getFieldProperty('id')));
+                $query->where()->eq(static::getIdField(),$this->__get($this->getFieldProperty(static::getIdField())));
                 $stmt = static::getDBConRead()->prepare($builder->writeFormatted($query));
                 if(!$stmt->execute($builder->getValues())){
                     $errorInfo = $stmt->errorInfo();
@@ -554,7 +559,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $data = array_filter($data, function ($e) {
             return $e !== null;
         });
-        unset($data['id']);
+        unset($data[static::getIdField()]);
         try {
             // Solution for booleans that slipped through self::getDataForSave() magic
             foreach ($data as $key => $value) {
@@ -573,7 +578,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     $update = $builder->update();
                     $update->setTable(static::$TableName);
                     $update->setValues($data);
-                    $update->where()->eq('id', $this->__get('id'));
+                    $update->where()->eq(static::getIdField(), $this->__get(static::getIdField()));
                     $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($update));
                     if (!$stmt->execute($builder->getValues())) {
                         $errorInfo = $stmt->errorInfo();
@@ -590,7 +595,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                         throw new RuntimeException($errorInfo[2]);
                     }
                     $id = static::getDBConWrite()->lastInsertId();
-                    $this->values['id'] = $id;
+                    $this->values[static::getIdField()] = $id;
                     $this->loadedValues = $this->values;
                     $this->existInStorage = true;
                     break;
@@ -675,7 +680,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             $builder = new GenericBuilder();
             $delete = $builder->delete();
             $delete->setTable(static::$TableName);
-            $delete->where()->eq('id',$this->__get('id'));
+            $delete->where()->eq(static::getIdField(),$this->__get(static::getIdField()));
             $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($delete));
             if(!$stmt->execute($builder->getValues())){
                 $errorInfo = $stmt->errorInfo();
@@ -684,7 +689,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         } catch (\Exception $e) {
             throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
-        RuntimeCache::getInstance()->drop(static::class, $this->__get('id'));
+        RuntimeCache::getInstance()->drop(static::class, $this->__get(static::getIdField()));
         return true;
     }
 
