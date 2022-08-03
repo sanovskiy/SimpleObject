@@ -11,8 +11,10 @@ namespace Sanovskiy\SimpleObject;
 
 use ArrayAccess;
 use Countable;
-use Envms\FluentPDO\Query;
 use Iterator;
+use NilPortugues\Sql\QueryBuilder\Builder\GenericBuilder;
+use NilPortugues\Sql\QueryBuilder\Manipulation\QueryException;
+use RuntimeException;
 
 /**
  * Class ActiveRecordAbstract
@@ -108,35 +110,29 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
         if ($forceLoad || !($result = RuntimeCache::getInstance()->get(static::class, $this->Id))) {
             try {
-                $query = static::getReadQuery()->from(static::$TableName)->select(
-                    array_keys(static::$propertiesMapping),
-                    true
-                )->where('id = ?', $this->__get($this->getFieldProperty('id')));
-                if (!$result = $query->fetch()) {
+                $builder = new GenericBuilder();
+                $query = $builder->select();
+                $query->setTable(static::$TableName)->setColumns(array_keys(static::$propertiesMapping));
+                $query->where()->eq('id',$this->__get($this->getFieldProperty('id')));
+                $stmt = static::getDBConRead()->prepare($builder->writeFormatted($query));
+                if(!$stmt->execute($builder->getValues())){
+                    $errorInfo = $stmt->errorInfo();
+                    throw new RuntimeException($errorInfo[2]);
+                }
+                if ($stmt->rowCount()<1) {
                     $this->existInStorage = false;
                     return false;
                 }
-            } catch (\Envms\FluentPDO\Exception $e) {
-                throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
+            } catch (\Exception $e) {
+                throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
             }
             $this->existInStorage = true;
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
             RuntimeCache::getInstance()->put(static::class, $this->Id, $result);
             $this->loadedValues = $result;
         }
         $this->populate($result);
         return true;
-    }
-
-    /**
-     * @return Query
-     */
-    protected static function getReadQuery()
-    {
-        $q = new Query(Util::getConnection(static::$SimpleObjectConfigNameRead));
-        $q->throwExceptionOnError(true);
-        $q->convertReadTypes(true);
-
-        return $q;
     }
 
     /**
@@ -366,28 +362,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * @return PDO
-     * @noinspection PhpUnused - It's used
-     */
-    public static function getDBConRead()
-    {
-        return Util::getConnection(self::$SimpleObjectConfigNameRead);
-    }
-
-    /**
-     * @return PDO
-     * @noinspection PhpUnused - It's used
-     */
-    public static function getDBConWrite()
-    {
-        return Util::getConnection(self::$SimpleObjectConfigNameWrite);
-    }
-
-    /**
      * @param array $conditions
      *
      * @return ActiveRecordAbstract|null
      * @throws Exception
+     * @throws QueryException
      */
     public static function one(array $conditions)
     {
@@ -398,59 +377,140 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param array $conditions
      * @return Collection
      * @throws Exception
+     * @throws QueryException
      */
     public static function find(array $conditions)
     {
-        try {
-            $select = static::getReadQuery()->from(static::$TableName);
-        } catch (\Envms\FluentPDO\Exception $e) {
-            throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
-        }
+        $builder = new GenericBuilder();
 
-        $select->select(array_keys(static::$propertiesMapping), true);
-
+        $select = $builder->select();
+        $select->setTable(static::$TableName)->setColumns(array_keys(static::$propertiesMapping));
         foreach ($conditions as $condition => $value) {
-            switch (strtolower($condition)) {
-                case '(columns)':
-                    $select->select($value, true);
+            $condition = strtolower($condition);
+            if (!in_array(
+                $condition,
+                array_merge(array_keys(static::$propertiesMapping), array_values(static::$propertiesMapping))
+            )) {
+                switch (strtolower($condition)) {
+                    case ':columns':
+                        $select->setColumns($value);
+                        break;
+                    case ':order':
+                        if (!is_array($value)) {
+                            $select->orderBy($value);
+                            break;
+                        }
+                        $select->orderBy($value[0], $value[1]);
+                        break;
+                    case ':limit':
+                        $select->limit($value);
+                        break;
+                    case ':having':
+                        $select->having($value);
+                        break;
+                    case ':group':
+                        $select->groupBy($value);
+                        break;
+                    default:
+                        //$condition, $value
+                        //$select->where()->eq($condition, $value);
+                        break;
+                }
+                continue;
+            }
+            $column = $condition;
+            if (!array_key_exists($column, static::$propertiesMapping)) {
+                if (!in_array($column, static::$propertiesMapping)) {
+                    // Column not found
+                    continue;
+                }
+                $column = array_search($column, static::$propertiesMapping);
+            }
+            if (!is_array($value)) {
+                $select->where()->eq($column, $value);
+                continue;
+            }
+            switch (count($value)) {
+                case 2:
+                    $compare = strtolower($value[0]);
+                    $value1 = $value[1];
+                    switch ($compare) {
+                        case 'null':
+                        case 'is null':
+                            $select->where()->isNull($column);
+                            break;
+                        case 'not null':
+                        case 'is not null':
+                            $select->where()->isNotNull($column);
+                            break;
+                        case '<':
+                        case 'lt':
+                            $select->where()->lessThan($column, $value1);
+                            break;
+                        case '>':
+                        case 'gt':
+                            $select->where()->greaterThan($column, $value1);
+                            break;
+                        case '<=':
+                        case 'lteq':
+                            $select->where()->lessThanOrEqual($column, $value1);
+                            break;
+                        case '>=':
+                        case 'gteq':
+                            $select->where()->greaterThanOrEqual($column, $value1);
+                            break;
+                        case '<>':
+                        case '!=':
+                            $select->where()->notEquals($column, $value1);
+                            break;
+                        case 'like':
+                            $select->where()->like($column, $value1);
+                            break;
+                        case 'not like':
+                            $select->where()->notLike($column, $value1);
+                            break;
+                    }
                     break;
-                case '(order)':
-                    $select->orderBy($value);
+                case 3:
+                    $compare = $value[0];
+                    $value1 = $value[1];
+                    $value2 = $value[2];
+                    switch ($compare) {
+                        case 'between':
+                            $select->where()->between($column, $value1, $value2);
+                            break;
+                        case 'not between':
+                            $select->where()->notBetween($column, $value1, $value2);
+                            break;
+                    }
                     break;
-                case '(limit)':
-                    $select->limit($value);
-                    break;
-                case '(offset)':
-                    $select->offset($value);
-                    break;
-                case '(having)':
-                    $select->having($value);
-                    break;
-                case '(group)':
+                default:
+                    // not in format
                     continue 2;
-                case '(null)':
-                    $select->where($value . ' IS NULL');
-                    continue 2;
-                case '(not null)':
-                    $select->where($value . ' IS NOT NULL');
-                    continue 2;
-                /*                case '(!!simulate)':
-                                    $returnQuery = true;
-                                    break;*/ default:
-                $select->where($condition, $value);
-                break;
             }
         }
-        /*        if ($returnQuery) {
-                    return $select;
-                }*/
         $result = new Collection();
-        foreach ($select as $_row) {
+        $stmt = static::getDBConRead()->prepare($builder->writeFormatted($select));
+        $stmt->execute($builder->getValues());
+        if ($stmt->errorCode() > 0) {
+            $info = $stmt->errorInfo();
+            throw new RuntimeException($info['2']);
+        }
+        while ($_row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
             $entity = new static();
             $entity->populate($_row);
             $result->push($entity);
         }
         return $result;
+    }
+
+    /**
+     * @return PDO
+     * @noinspection PhpUnused - It's used
+     */
+    public static function getDBConRead()
+    {
+        return Util::getConnection(self::$SimpleObjectConfigNameRead);
     }
 
     /**
@@ -488,6 +548,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public function save($force = false)
     {
+        $builder = new GenericBuilder();
         $data = $this->getDataForSave();
         // Filtering nulls
         $data = array_filter($data, function ($e) {
@@ -503,36 +564,39 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             }
             switch ($this->isExistInStorage()) {
                 case true: // Update existing record
-
                     if (!$force) {
                         $data = array_diff(array_intersect_key($data, $this->loadedValues), $this->loadedValues);
                         if (empty($data)) {
                             return true;
                         }
                     }
-
-                    $update = static::getWriteQuery()->update(static::$TableName)->set($data)->where(
-                        'id = ?',
-                        $this->__get('id')
-                    );
-
-                    if (!$update->execute(true)) {
-                        return false;
+                    $update = $builder->update();
+                    $update->setTable(static::$TableName);
+                    $update->setValues($data);
+                    $update->where()->eq('id', $this->__get('id'));
+                    $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($update));
+                    if (!$stmt->execute($builder->getValues())) {
+                        $errorInfo = $stmt->errorInfo();
+                        throw new RuntimeException($errorInfo[2]);
                     }
                     break;
                 default: // Create new record
-                    $insert = static::getWriteQuery()->insertInto(static::$TableName)->values($data);
-
-                    if (!($id = $insert->execute())) {
-                        return false;
+                    $insert = $builder->insert();
+                    $insert->setTable(static::$TableName);
+                    $insert->setValues($data);
+                    $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($insert));
+                    if (!$stmt->execute($builder->getValues())) {
+                        $errorInfo = $stmt->errorInfo();
+                        throw new RuntimeException($errorInfo[2]);
                     }
+                    $id = static::getDBConWrite()->lastInsertId();
                     $this->values['id'] = $id;
                     $this->loadedValues = $this->values;
                     $this->existInStorage = true;
                     break;
             }
         } catch (\Envms\FluentPDO\Exception $e) {
-            throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
+            throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
         return true;
     }
@@ -590,15 +654,12 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * @return Query
+     * @return PDO
+     * @noinspection PhpUnused - It's used
      */
-    protected static function getWriteQuery()
+    public static function getDBConWrite()
     {
-        $q = (new Query(Util::getConnection(static::$SimpleObjectConfigNameWrite)));
-        $q->throwExceptionOnError(true);
-        $q->convertWriteTypes(true);
-
-        return $q;
+        return Util::getConnection(self::$SimpleObjectConfigNameWrite);
     }
 
     /**
@@ -611,17 +672,20 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             return false;
         }
         try {
-            $success = !!static::getWriteQuery()->deleteFrom(static::$TableName)->where(
-                'id = ?',
-                $this->__get('id')
-            )->execute();
-        } catch (\Envms\FluentPDO\Exception $e) {
-            throw new Exception('FluentPDO error: ' . $e->getMessage(), $e->getCode(), $e);
+            $builder = new GenericBuilder();
+            $delete = $builder->delete();
+            $delete->setTable(static::$TableName);
+            $delete->where()->eq('id',$this->__get('id'));
+            $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($delete));
+            if(!$stmt->execute($builder->getValues())){
+                $errorInfo = $stmt->errorInfo();
+                throw new RuntimeException($errorInfo[2]);
+            }
+        } catch (\Exception $e) {
+            throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
-        if ($success) {
-            RuntimeCache::getInstance()->drop(static::class, $this->__get('id'));
-        }
-        return $success;
+        RuntimeCache::getInstance()->drop(static::class, $this->__get('id'));
+        return true;
     }
 
     /**
