@@ -13,7 +13,6 @@ use ArrayAccess;
 use Countable;
 use Envms\FluentPDO\Query;
 use Iterator;
-use JetBrains\PhpStorm\Pure;
 
 /**
  * Class ActiveRecordAbstract
@@ -445,7 +444,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @return bool
      * @noinspection PhpUnused - It's used
      */
-    #[Pure] public function __isset($name): bool
+    public function __isset($name): bool
     {
         if (!static::isPropertyExist($name)) {
             return false;
@@ -649,7 +648,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * @return mixed
+     * @return void
      */
     public function next(): void
     {
@@ -666,7 +665,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @return bool
      */
-    #[Pure] public function valid(): bool
+    public function valid(): bool
     {
         $key = $this->key();
         return ($key !== null && $key !== false);
@@ -685,7 +684,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @return bool
      */
-    #[Pure] public function offsetExists(mixed $offset): bool
+    public function offsetExists(mixed $offset): bool
     {
         return (static::isPropertyExist($offset) || static::isTableFieldExist($offset));
     }
