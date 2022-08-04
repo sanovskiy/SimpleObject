@@ -1,6 +1,6 @@
 .idea/
 vendor/
-models/Base/
+models/
 composer.lock
 cli/*
 !cli/generate-models-example.php
