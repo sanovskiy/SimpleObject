@@ -61,12 +61,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      *
      * @param int|null $id
      *
-     * @throws Exception
      */
     public function __construct(?int $id = null)
     {
         if (!$this->init()) {
-            throw new Exception('Model ' . static::class . '::init() failed');
+            throw new RuntimeException('Model ' . static::class . '::init() failed');
         }
         $this->DBConRead = Util::getConnection(static::$SimpleObjectConfigNameRead);
         $this->DBConWrite = Util::getConnection(static::$SimpleObjectConfigNameWrite);
@@ -102,7 +101,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param bool $forceLoad
      *
      * @return bool
-     * @throws Exception
      */
     protected function load(bool $forceLoad = false): bool
     {
@@ -128,7 +126,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 }
                 $result = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\Exception $e) {
-                throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
+                throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
             }
             $this->existInStorage = true;
             RuntimeCache::getInstance()->put(static::class, $this->{$this->getIdProperty()}, $result);
@@ -202,16 +200,14 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param array $bind
      *
      * @return Collection<static>
-     * @throws Exception
      */
     public static function factory(\PDOStatement|string $source, array $bind = []): Collection
     {
         if (!is_string($source) && !($source instanceof \PDOStatement)) {
-            throw new Exception('Unknown type ' . gettype($source) . '. Expected string or PDOStatement');
+            throw new RuntimeException('Unknown type ' . gettype($source) . '. Expected string or PDOStatement');
         }
 
         if (is_string($source)) {
-            /** @noinspection CallableParameterUseCaseInTypeContextInspection */
             $source = Util::getConnection(static::$SimpleObjectConfigNameRead)->prepare($source);
         }
 
@@ -222,7 +218,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
         while ($row = $source->fetch(\PDO::FETCH_ASSOC)) {
             if (count($missingFields = array_diff(array_keys($row), array_keys(static::$propertiesMapping))) > 0) {
-                throw new Exception('Missing fields ' . implode(', ', $missingFields));
+                throw new RuntimeException('Missing fields ' . implode(', ', $missingFields));
             }
             $entity = new static();
             $entity->populate($row);
@@ -268,13 +264,12 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @return string
-     * @throws Exception
      * @noinspection PhpUnused - It's used
      */
     public static function getTableName(): string
     {
         if (static::$TableName === '') {
-            throw new Exception(
+            throw new RuntimeException(
                 static::class . ' has no defined table name. Possible misconfiguration. Try to regenerate base models'
             );
         }
@@ -284,10 +279,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @param array $conditions
      *
-     * @return ActiveRecordAbstract|null
-     * @throws Exception
+     * @return static|null
      */
-    public static function one(array $conditions): ?ActiveRecordAbstract
+    public static function one(array $conditions): ?static
     {
         return static::find($conditions)->getElement();
     }
@@ -295,7 +289,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     /**
      * @param array $conditions
      * @return Collection|Query
-     * @throws Exception
      */
     public static function find(array $conditions): Collection|Query
     {
@@ -464,7 +457,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     }
 
     /**
-     * @throws Exception
      * @noinspection PhpUnused - It's used
      */
     public function reload()
@@ -476,7 +468,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param bool $force
      *
      * @return bool
-     * @throws Exception
      */
     public function save(bool $force = false): bool
     {
@@ -528,7 +519,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     break;
             }
         } catch (\Envms\FluentPDO\Exception $e) {
-            throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
+            throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
         return true;
     }
@@ -589,7 +580,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param string $name
      *
      * @return mixed
-     * @throws Exception
      */
     public function __get(string $name): mixed
     {
@@ -621,7 +611,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param mixed $value
      *
      * @return void
-     * @throws Exception
      */
     public function __set(string $name, mixed $value)
     {
@@ -638,12 +627,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param string $propertyName
      *
      * @return string
-     * @throws Exception
      */
     public static function getPropertyField(string $propertyName): string
     {
         if (!static::isPropertyExist($propertyName)) {
-            throw new Exception('Property ' . $propertyName . ' not exist im model ' . static::class);
+            throw new RuntimeException('Property ' . $propertyName . ' not exist im model ' . static::class);
         }
         return array_flip(static::$propertiesMapping)[$propertyName];
     }
@@ -659,7 +647,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @return bool
-     * @throws Exception
      */
     public function delete(): bool
     {
@@ -677,7 +664,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 throw new RuntimeException($errorInfo[2]);
             }
         } catch (\Exception $e) {
-            throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
+            throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
         RuntimeCache::getInstance()->drop(static::class, $this->{$this->getIdField()});
         $this->loadedValues = [];
@@ -687,7 +674,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     /**
      * @return array
-     * @throws Exception
      */
     public function __toArray(): array
     {
@@ -705,12 +691,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param string $tableFieldName
      *
      * @return string
-     * @throws Exception
      */
     public function getFieldProperty(string $tableFieldName): string
     {
         if (!static::isTableFieldExist($tableFieldName)) {
-            throw new Exception('Table field ' . $tableFieldName . ' not exist im model ' . static::class);
+            throw new RuntimeException('Table field ' . $tableFieldName . ' not exist im model ' . static::class);
         }
         return static::$propertiesMapping[$tableFieldName];
     }
