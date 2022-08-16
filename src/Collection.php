@@ -18,6 +18,7 @@
  */
 
 use Sanovskiy\Traits\{ArrayAccess, Countable, Iterator};
+use RuntimeException;
 
 /**
  * Class Collection
@@ -90,12 +91,11 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      *
      * @return Collection
-     * @throws Exception
      */
     public function unlock(): Collection
     {
         if (!$this->isUnlockable) {
-            throw new Exception('Collection is not unlockable.');
+            throw new RuntimeException('Collection is not unlockable.');
         }
         $this->isLocked = false;
         return $this;
@@ -107,7 +107,6 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @param string $name
      *
      * @return Collection
-     * @throws Exception
      */
     public function setClassName(string $name): Collection
     {
@@ -115,10 +114,10 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
             return $this;
         }
         if (count($this->records) > 0) {
-            throw new Exception('Collection not empty. You can\'t change classname');
+            throw new RuntimeException('Collection not empty. You can\'t change classname');
         }
         if ($this->isLocked) {
-            throw new Exception('Collection is locked. You can\'t change classname');
+            throw new RuntimeException('Collection is locked. You can\'t change classname');
         }
         $this->className = $name;
         return $this;
@@ -141,13 +140,16 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * @return mixed
-     * @throws \Exception
      */
-    public function getNextRandomElement()
+    public function getNextRandomElement(): mixed
     {
         $forSelect = array_values(array_diff(array_keys($this->records), $this->returnedIdList));
         if (count($forSelect) > 0) {
-            $returnIndex = $forSelect[random_int(0, count($forSelect) - 1)];
+            try {
+                $returnIndex = $forSelect[random_int(0, count($forSelect) - 1)];
+            } catch (\Exception $e) {
+                throw new RuntimeException($e->getMessage(),$e->getCode(),$e);
+            }
             $this->returnedIdList[] = $returnIndex;
             return $this->records[$returnIndex];
         }
@@ -167,12 +169,11 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * @return mixed|null
-     * @throws Exception
      */
-    public function shift()
+    public function shift(): mixed
     {
         if ($this->isLocked) {
-            throw new Exception(self::ERROR_LOCKED);
+            throw new RuntimeException(self::ERROR_LOCKED);
         }
         if (count($this->records) > 0) {
             return array_shift($this->records);
@@ -182,12 +183,11 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
 
     /**
      * @return mixed|null
-     * @throws Exception
      */
-    public function pop()
+    public function pop(): mixed
     {
         if ($this->isLocked) {
-            throw new Exception(self::ERROR_LOCKED);
+            throw new RuntimeException(self::ERROR_LOCKED);
         }
         if (count($this->records) > 0) {
             return array_pop($this->records);
@@ -199,21 +199,20 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @param $value
      *
      * @return bool
-     * @throws Exception
      */
     public function unshift($value): bool
     {
         if ($this->isLocked) {
-            throw new Exception(self::ERROR_LOCKED);
+            throw new RuntimeException(self::ERROR_LOCKED);
         }
         if (!is_object($value)) {
             return false;
         }
-        if ($this->className === null || empty($this->className)) {
+        if (empty($this->className)) {
             $this->className = get_class($value);
         }
         if (!($value instanceof $this->className) && !is_subclass_of($value, $this->className)) {
-            throw new Exception(self::ERROR_CLASS_MISMATCH);
+            throw new RuntimeException(self::ERROR_CLASS_MISMATCH);
         }
         array_unshift($this->records, $value);
         $this->records = array_values($this->records);
@@ -227,7 +226,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return void
      * @throws Exception
      */
-    public function reindexByField($reverse = false, $field = 'Id'): void
+    public function reindexByField(bool $reverse = false, string $field = 'Id'): void
     {
         if ($this->isLocked) {
             throw new Exception(self::ERROR_LOCKED);
@@ -280,14 +279,13 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @param mixed $value
      *
      * @return Collection
-     * @throws Exception
      */
-    public function getElementsByPropertyValue(string $property, $value): Collection
+    public function getElementsByPropertyValue(string $property, mixed $value): Collection
     {
         $elements = new self;
         foreach ($this->records as $indexValue) {
             if (!property_exists($indexValue, $property)) {
-                throw new Exception('Objects in current set does not have property ' . $property);
+                throw new RuntimeException('Objects in current set does not have property ' . $property);
             }
             if ($indexValue->{$property} === $value) {
                 $elements->push($indexValue);
@@ -300,21 +298,20 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @param $value
      *
      * @return bool
-     * @throws Exception
      */
     public function push($value): bool
     {
         if ($this->isLocked) {
-            throw new Exception(self::ERROR_LOCKED);
+            throw new RuntimeException(self::ERROR_LOCKED);
         }
         if (!is_object($value)) {
             return false;
         }
-        if ($this->className === null || empty($this->className)) {
+        if (empty($this->className)) {
             $this->className = get_class($value);
         }
         if (!($value instanceof $this->className)) {
-            throw new Exception(self::ERROR_CLASS_MISMATCH);
+            throw new RuntimeException(self::ERROR_CLASS_MISMATCH);
         }
         $this->records[] = $value;
         return true;
@@ -327,7 +324,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function getElementsByFunctionResult(string $method, $value): Collection
+    public function getElementsByFunctionResult(string $method, mixed $value): Collection
     {
         $elements = new self;
         foreach ($this->records as $indexValue) {
