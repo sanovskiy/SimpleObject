@@ -304,7 +304,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $select = $builder->select();
         $select->setTable(static::$TableName)->setColumns(array_keys(static::$propertiesMapping));
         foreach ($conditions as $condition => $value) {
-            $condition = strtolower($condition);
             if (!in_array(
                 $condition,
                 array_merge(array_keys(static::$propertiesMapping), array_values(static::$propertiesMapping))
@@ -384,6 +383,14 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                         case 'not like':
                             $select->where()->notLike($column, $value1);
                             break;
+                        case 'in':
+                            $select->where()->in($column,$value1);
+                            break;
+                        case 'not in':
+                        case 'notin':
+                        case '!in':
+                        $select->where()->notin($column,$value1);
+                            break;
                     }
                     break;
                 case 3:
@@ -410,6 +417,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         if ($stmt->errorCode() > 0) {
             throw new RuntimeException($stmt->errorInfo()[2]);
         }
+
         while ($_row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
             $entity = new static();
             $entity->populate($_row);
@@ -425,31 +433,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     public static function getDBConRead(): PDO
     {
         return Util::getConnection(self::$SimpleObjectConfigNameRead);
-    }
-
-    /**
-     * @return Query
-     * @deprecated
-     */
-    protected static function getReadQuery(): Query
-    {
-        $q = new Query(Util::getConnection(static::$SimpleObjectConfigNameRead));
-        $q->throwExceptionOnError(true);
-        $q->convertReadTypes(true);
-
-        return $q;
-    }
-
-    /**
-     * @return Query
-     */
-    protected static function getWriteQuery(): Query
-    {
-        $q = (new Query(Util::getConnection(static::$SimpleObjectConfigNameWrite)));
-        $q->throwExceptionOnError(true);
-        $q->convertWriteTypes(true);
-
-        return $q;
     }
 
     /**
@@ -697,6 +680,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             throw new Exception('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
         RuntimeCache::getInstance()->drop(static::class, $this->{$this->getIdField()});
+        $this->loadedValues = [];
+        $this->existInStorage = false;
         return true;
     }
 
