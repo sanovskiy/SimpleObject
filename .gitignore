@@ -2,6 +2,9 @@
 vendor/
 models/Base/
 composer.lock
-cli/*
-!cli/generate-models-example.php
+bin/*
+!bin/generate-models-example.php
 *.cache
+.docker/
+Models/
+App/
