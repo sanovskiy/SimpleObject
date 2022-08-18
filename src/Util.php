@@ -72,7 +72,7 @@ class Util
      * @param string $configName
      * @throws \Exception
      */
-    public static function init($options, $configName = 'default')
+    public static function init($options, string $configName = 'default'): void
     {
         if (in_array(strtolower($configName), self::$restrictedConfigNames)) {
             throw new Exception('You can\'t use \'' . $configName . '\' as a config name due to ORM limitations');
@@ -84,24 +84,27 @@ class Util
     /**
      * @return array
      */
-    public static function getRestrictedConfigNames()
+    public static function getRestrictedConfigNames(): array
     {
         return self::$restrictedConfigNames;
+    }
+
+    /**
+     * @return void
+     */
+    public static function resetConnections(): void
+    {
+        self::$connections = [];
     }
 
     /**
      * @param string $configName
      * @return PDO
      */
-    public static function getConnection($configName = 'default')
+    public static function getConnection(string $configName = 'default'): ?PDO
     {
         if (!isset(self::$connections[$configName]) || null === self::$connections[$configName]) {
             $dbSettings = self::getSettingsValue('dbcon', $configName);
-            /*$dsn = $dbSettings['driver'].':host=' . $dbSettings['host'] . ';';
-            if (isset($dbSettings['socket'])) {
-                $dsn = $dbSettings['driver'].':unix_socket=' . $dbSettings['socket'] . ';';
-            }
-            $dsn = $dsn . 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');*/
             switch (strtolower($dbSettings['driver'])) {
                 case 'sqlsrv':
                     $dsn = $dbSettings['driver'] . ':Server=' . $dbSettings['host'] . ';';
