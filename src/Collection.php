@@ -32,6 +32,8 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     protected const ERROR_CLASS_MISMATCH = 'New object\'s class didn\'t match collection\'s class';
     protected const ERROR_CLASS_NOT_FOUND = 'Class not found';
 
+    protected array $records = [];
+
     /**
      * @var string|null
      */
