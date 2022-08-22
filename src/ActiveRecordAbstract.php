@@ -15,6 +15,7 @@ use Envms\FluentPDO\Query;
 use Iterator;
 use NilPortugues\Sql\QueryBuilder\Builder\GenericBuilder;
 use RuntimeException;
+use Sanovskiy\SimpleObject\FieldValues\NullValue;
 
 /**
  * Class ActiveRecordAbstract
@@ -467,6 +468,12 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $data = array_filter($data, function ($e) {
             return $e !== null;
         });
+        $data = array_map(function($e){
+            if ($e instanceof NullValue){
+                return null;
+            }
+            return $e;
+        },$data);
         unset($data[static::getIdField()]);
         try {
             // Solution for booleans that slipped through self::getDataForSave() magic
