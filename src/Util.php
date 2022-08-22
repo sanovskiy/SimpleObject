@@ -129,7 +129,7 @@ class Util
                     $dsn .= 'dbname=' . $dbSettings['database'] . ($dbSettings['charset'] ? ';charset=' . $dbSettings['charset'] : '');
                     break;
             }
-            self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password']);
+            self::$connections[$configName] = new PDO($dsn, $dbSettings['user'], $dbSettings['password'],$dbSettings['options']??null);
             $logfile = self::getSettingsValue('sql_logfile', $configName);
 
             if ($logfile && file_exists(dirname($logfile)) && is_writable(dirname($logfile))) {
