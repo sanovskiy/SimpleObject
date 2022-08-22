@@ -468,12 +468,12 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $data = array_filter($data, function ($e) {
             return $e !== null;
         });
-        $data = array_map(function($e){
-            if ($e instanceof NullValue){
+        $data = array_map(function ($e) {
+            if ($e instanceof NullValue) {
                 return null;
             }
             return $e;
-        },$data);
+        }, $data);
         unset($data[static::getIdField()]);
         try {
             // Solution for booleans that slipped through self::getDataForSave() magic
@@ -495,7 +495,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     $update->setValues($data);
                     $update->where()->eq(static::getIdField(), $this->__get(static::getIdField()));
                     $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($update));
-                    if (!$stmt->execute($builder->getValues())) {
+                    // Fixing NULLS
+                    $updateValues = array_combine(
+                        array_keys($builder->getValues()),
+                        array_map(function ($v) {
+                            if ($v === 'NULL') {
+                                return null;
+                            }
+                            return $v;
+                        }, array_values($builder->getValues()))
+                    );
+                    if (!$stmt->execute($updateValues)) {
                         $errorInfo = $stmt->errorInfo();
                         throw new RuntimeException($errorInfo[2]);
                     }
@@ -505,7 +515,18 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     $insert->setTable(static::$TableName);
                     $insert->setValues($data);
                     $stmt = static::getDBConWrite()->prepare($builder->writeFormatted($insert));
-                    if (!$stmt->execute($builder->getValues())) {
+                    // Fixing NULLS
+                    $insertValues = array_combine(
+                        array_keys($builder->getValues()),
+                        array_map(function ($v) {
+                            if ($v === 'NULL') {
+                                return null;
+                            }
+                            return $v;
+                        }, array_values($builder->getValues()))
+                    );
+
+                    if (!$stmt->execute($insertValues)) {
                         $errorInfo = $stmt->errorInfo();
                         throw new RuntimeException($errorInfo[2]);
                     }
