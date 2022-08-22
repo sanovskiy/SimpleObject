@@ -41,17 +41,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     protected static array $propertiesMapping = [];
     protected static array $dataTransformRules = [];
-    /**
-     * @var ?PDO
-     */
-    protected ?PDO $DBConWrite;
-    /**
-     * @var ?PDO
-     */
-    protected ?PDO $DBConRead;
-    /**
-     * @var bool
-     */
+
     protected bool $existInStorage = false;
     protected array $values = [];
     protected array $loadedValues = [];
@@ -67,8 +57,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         if (!$this->init()) {
             throw new RuntimeException('Model ' . static::class . '::init() failed');
         }
-        $this->DBConRead = Util::getConnection(static::$SimpleObjectConfigNameRead);
-        $this->DBConWrite = Util::getConnection(static::$SimpleObjectConfigNameWrite);
         if ($id === null) {
             $this->{$this->getIdProperty()} = null;
             return;
@@ -377,12 +365,12 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                             $select->where()->notLike($column, $value1);
                             break;
                         case 'in':
-                            $select->where()->in($column,$value1);
+                            $select->where()->in($column, $value1);
                             break;
                         case 'not in':
                         case 'notin':
                         case '!in':
-                        $select->where()->notin($column,$value1);
+                            $select->where()->notin($column, $value1);
                             break;
                     }
                     break;
@@ -597,6 +585,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
 
         return match ($name) {
+            'DBConRead' => Util::getConnection(static::$SimpleObjectConfigNameRead),
+            'DBConWrite' => Util::getConnection(static::$SimpleObjectConfigNameWrite),
             'TableName' => static::$TableName,
             'TableFields' => array_keys(static::$propertiesMapping),
             'Properties' => array_values(static::$propertiesMapping),
