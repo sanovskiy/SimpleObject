@@ -25,6 +25,8 @@ use RuntimeException;
  * @property array $Properties
  * @property string $SimpleObjectConfigNameRead
  * @property string $SimpleObjectConfigNameWrite
+ * @property ?PDO $DBConRead
+ * @property ?PDO $DBConWrite
  *
  */
 class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
