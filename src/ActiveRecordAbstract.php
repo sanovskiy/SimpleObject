@@ -26,8 +26,6 @@ use Sanovskiy\SimpleObject\FieldValues\NullValue;
  * @property array $Properties
  * @property string $SimpleObjectConfigNameRead
  * @property string $SimpleObjectConfigNameWrite
- * @property ?PDO $DBConRead
- * @property ?PDO $DBConWrite
  *
  */
 class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
@@ -107,7 +105,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $query = $builder->select();
                 $query->setTable(static::$TableName)->setColumns(array_keys(static::$propertiesMapping));
                 $query->where()->eq($this->getIdField(), $this->{$this->getIdField()});
-                $stmt = $this->DBConRead->prepare($builder->writeFormatted($query));
+                $stmt = static::getDBConRead()->prepare($builder->writeFormatted($query));
                 if (!$stmt->execute($builder->getValues())) {
                     throw new RuntimeException('Fetch by PK failed: ' . $stmt->errorInfo()[2]);
                 }
@@ -302,10 +300,13 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                         break;
                     case ':limit':
                         if (is_array($value)) {
-                            $select->limit($value[0], $value[1]);
+                            $limit = (int) isset($value['limit']) ? $value['limit'] : $value[0];
+                            $offset = (int) isset($value['offset']) ? $value['offset'] : $value[1];
+                            $select->limit($offset, $limit);
                         } else {
-                            $select->limit($value);
+                            $select->limit(0,$value);
                         }
+
                         break;
                     default:
                         break;
@@ -416,7 +417,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public static function getDBConRead(): PDO
     {
-        return Util::getConnection(self::$SimpleObjectConfigNameRead);
+        $c = Util::getConnection(self::$SimpleObjectConfigNameRead);
+        $c->setAttribute(\PDO::ATTR_EMULATE_PREPARES, FALSE);
+        return $c;
     }
 
     /**
@@ -662,7 +665,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public static function getDBConWrite(): PDO
     {
-        return Util::getConnection(self::$SimpleObjectConfigNameWrite);
+        $c = Util::getConnection(self::$SimpleObjectConfigNameWrite);
+        $c->setAttribute(\PDO::ATTR_EMULATE_PREPARES, FALSE);
+        return $c;
     }
 
     /**
