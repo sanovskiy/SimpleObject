@@ -1,4 +1,5 @@
 <?php
+
 namespace Sanovskiy\SimpleObject;
 
 
@@ -148,11 +149,11 @@ class ModelGenerator
                     'class_namespace' => Util::getSettingsValue(
                             'models_namespace',
                             $this->configName
-                        ) . 'Logic\\' . $namespacePrefix,
+                        ) . 'Logic' . ($namespacePrefix ? '\\' . $namespacePrefix : ''),
                     'base_class_namespace' => Util::getSettingsValue(
                             'models_namespace',
                             $this->configName
-                        ) . 'Base\\' . $namespacePrefix,
+                        ) . 'Base' . ($namespacePrefix ? '\\' . $namespacePrefix : ''),
                     'base_class_extends' => Util::getSettingsValue(
                         'base_class_extends',
                         $this->configName
@@ -163,10 +164,10 @@ class ModelGenerator
 
                 $LogicModel = new ClassType($tableInfo['class_name']);
                 $LogicModel->setExtends(
-                        ['Base_' . $tableInfo['class_name'] => $tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name']]
-                    )->setName($tableInfo['class_name'])->setComment(
-                        sprintf("LogicModel class for table %s", $tableInfo['table_name'])
-                    );
+                    ['Base_' . $tableInfo['class_name'] => $tableInfo['base_class_namespace'] . '\\' . $tableInfo['class_name']]
+                )->setName($tableInfo['class_name'])->setComment(
+                    sprintf("LogicModel class for table %s", $tableInfo['table_name'])
+                );
 
                 $LogicNamespace = new PhpNamespace($tableInfo['class_namespace']);
                 $LogicNamespace->addUse(
@@ -197,15 +198,15 @@ class ModelGenerator
 
                 if ($writeConfigName !== 'default') {
                     $BaseModel->addProperty('SimpleObjectConfigNameWrite', $writeConfigName)->setProtected(
-                        )->addComment('Config name for write connection')->setStatic()->setType('string');
+                    )->addComment('Config name for write connection')->setStatic()->setType('string');
                 }
                 if ($readConfigName !== 'default') {
                     $BaseModel->addProperty('SimpleObjectConfigNameRead', $readConfigName)->setProtected()->addComment(
-                            'Config name for read connection'
-                        )->setStatic()->setType('string');
+                        'Config name for read connection'
+                    )->setStatic()->setType('string');
                 }
                 $BaseModel->addProperty('TableName', $tableInfo['table_name'])->setType('string')->setProtected(
-                    )->setStatic()->addComment('Model database table name');
+                )->setStatic()->addComment('Model database table name');
 
                 $propertiesMapping = [];
                 $Comments = [];
@@ -294,10 +295,10 @@ class ModelGenerator
                     }
                 }
                 $BaseModel->addProperty('propertiesMapping', $propertiesMapping)->setType('array')->setProtected(
-                    )->addComment('Model properties for table field mapping')->setStatic();
+                )->addComment('Model properties for table field mapping')->setStatic();
                 $BaseModel->addProperty('dataTransformRules', $dataTransformRules)->setProtected()->setType(
-                        'array'
-                    )->addComment('Transformations for reading and writing')->setStatic();
+                    'array'
+                )->addComment('Transformations for reading and writing')->setStatic();
 
                 $BaseModel->addComment(
                     'Base class for model ' . $tableInfo['class_namespace'] . '\\' . $tableInfo['class_name']
