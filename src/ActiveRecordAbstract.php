@@ -417,7 +417,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public static function getDBConRead(): PDO
     {
-        $c = Util::getConnection(self::$SimpleObjectConfigNameRead);
+        $c = Util::getConnection(static::$SimpleObjectConfigNameRead);
         $c->setAttribute(\PDO::ATTR_EMULATE_PREPARES, FALSE);
         return $c;
     }
@@ -665,7 +665,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public static function getDBConWrite(): PDO
     {
-        $c = Util::getConnection(self::$SimpleObjectConfigNameWrite);
+        $c = Util::getConnection(static::$SimpleObjectConfigNameWrite);
         $c->setAttribute(\PDO::ATTR_EMULATE_PREPARES, FALSE);
         return $c;
     }
