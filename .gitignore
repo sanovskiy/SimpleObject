@@ -2,6 +2,7 @@
 vendor/
 models/Base/
 composer.lock
+composer.phar
 bin/*
 !bin/generate-models-example.php
 *.cache
