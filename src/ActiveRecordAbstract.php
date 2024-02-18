@@ -14,6 +14,8 @@ use Countable;
 use Envms\FluentPDO\Query;
 use Iterator;
 use NilPortugues\Sql\QueryBuilder\Builder\GenericBuilder;
+use NilPortugues\Sql\QueryBuilder\Manipulation\AbstractBaseQuery;
+use NilPortugues\Sql\QueryBuilder\Manipulation\Select;
 use RuntimeException;
 use Sanovskiy\SimpleObject\FieldValues\NullValue;
 
@@ -265,6 +267,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return static::$TableName;
     }
 
+    public static function getSelectQuery($addColumns=true): Select
+    {
+        $builder = new GenericBuilder();
+        $select = $builder->select();
+        $select->setTable(static::$TableName);
+        if ($addColumns){
+            $select->setColumns(array_keys(static::$propertiesMapping));
+        }
+        return $select;
+    }
+
     /**
      * @param array $conditions
      *
@@ -275,11 +288,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return static::find($conditions)->getElement();
     }
 
-    /**
-     * @param array $conditions
-     * @return Collection|Query
-     */
-    public static function find(array $conditions): Collection|Query
+    private static function getSelectByCondidions(array $conditions): Select
     {
         $builder = new GenericBuilder();
 
@@ -396,6 +405,30 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     continue 2;
             }
         }
+        return $select;
+    }
+
+    public static function getCount(array $conditions): int
+    {
+        $builder = new GenericBuilder();
+        $select = self::getSelectByCondidions($conditions);
+        $stmt = static::getDBConRead()->prepare($builder->writeFormatted($select));
+        $stmt->execute($builder->getValues());
+        if ($stmt->errorCode() > 0) {
+            throw new RuntimeException($stmt->errorInfo()[2]);
+        }
+        return $stmt->rowCount();
+    }
+
+    /**
+     * @param array $conditions
+     * @return Collection|Query
+     */
+    public static function find(array $conditions): Collection|Query
+    {
+        $builder = new GenericBuilder();
+        $select = self::getSelectByCondidions($conditions);
+
         $result = new Collection();
         $stmt = static::getDBConRead()->prepare($builder->writeFormatted($select));
         $stmt->execute($builder->getValues());
