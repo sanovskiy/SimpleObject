@@ -288,12 +288,18 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return static::find($conditions)->getElement();
     }
 
-    private static function getSelectByCondidions(array $conditions): Select
+    private static function getSelectByCondidions(array $conditions,$count=false): Select
     {
         $builder = new GenericBuilder();
 
         $select = $builder->select();
-        $select->setTable(static::$TableName)->setColumns(array_keys(static::$propertiesMapping));
+        $select->setTable(static::$TableName);
+        if (!$count){
+            $select->setColumns(array_keys(static::$propertiesMapping));
+        } else {
+            $select->count();
+        }
+
         foreach ($conditions as $condition => $value) {
             if (!in_array(
                 $condition,
@@ -411,13 +417,13 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     public static function getCount(array $conditions): int
     {
         $builder = new GenericBuilder();
-        $select = self::getSelectByCondidions($conditions);
+        $select = self::getSelectByCondidions($conditions,true);
         $stmt = static::getDBConRead()->prepare($builder->writeFormatted($select));
         $stmt->execute($builder->getValues());
         if ($stmt->errorCode() > 0) {
             throw new RuntimeException($stmt->errorInfo()[2]);
         }
-        return $stmt->rowCount();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
