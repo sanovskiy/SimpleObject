@@ -331,8 +331,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             $column = $condition;
             if (!array_key_exists($column, static::$propertiesMapping)) {
                 if (!in_array($column, static::$propertiesMapping)) {
-                    // Column not found
-                    continue;
+                    preg_match('/([A-Za-z]+)\(([^)]+)\)/', $column, $_matches);
+                    if (count($_matches) !== 3) {
+                        continue;
+                    }
+                    $functionName = $_matches[1];
+                    if (!QueryExpression::isValidFunctionName($functionName)){
+                        continue;
+                    }
+                    $arguments = explode(',', $_matches[2]);
+                    $arguments = array_map('trim', $arguments);
+                    $column = new QueryExpression($functionName, $arguments);
                 }
                 $column = array_search($column, static::$propertiesMapping);
             }
@@ -342,6 +351,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             }
             switch (count($value)) {
                 case 2:
+                    if ($value[0] instanceof QueryExpression){
+                        $value[0] = $value[0]->getString();
+                    }
                     $compare = strtolower($value[0]);
                     $value1 = $value[1];
                     switch ($compare) {
