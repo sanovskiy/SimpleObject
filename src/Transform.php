@@ -1,4 +1,7 @@
 <?php namespace Sanovskiy\SimpleObject;
+use Sanovskiy\Utility\NamingStyle;
+use Sanovskiy\Utility\Strings;
+
 /**
  * Copyright 2010-2017 Pavel Terentyev <pavel.terentyev@gmail.com>
  *
@@ -61,7 +64,7 @@ class Transform
     }
 
     /**
-     * @param int $value
+     * @param int|null $value
      * @param array $options
      *
      * @return bool|null|string
@@ -100,7 +103,7 @@ class Transform
      *
      * @return float
      */
-    public static function div(int|float $value, array $options = [])
+    public static function div(int|float $value, array $options = []): float|int
     {
         $divider = $options [1];
         if ($divider == 0) {
@@ -110,12 +113,12 @@ class Transform
     }
 
     /**
-     * @param       $value
+     * @param int|float $value
      * @param array $options
      *
-     * @return mixed
+     * @return int|float
      */
-    public static function mult($value, $options = [])
+    public static function mult(int|float $value, array $options = []): int|float
     {
         $multiplier = $options[1];
         return ($value * $multiplier);
@@ -138,7 +141,7 @@ class Transform
      * @return string
      * @noinspection PhpUnused
      */
-    public static function bool2pgbool(bool $value)
+    public static function bool2pgbool(bool $value): string
     {
         return $value ? 't' : 'f';
     }
@@ -148,7 +151,7 @@ class Transform
      *
      * @return bool
      */
-    public static function digit2boolean($value)
+    public static function digit2boolean($value): bool
     {
         return !(0 >= $value);
     }
@@ -170,7 +173,7 @@ class Transform
      * @return int
      * @noinspection PhpUnused
      */
-    public static function boolean2digit(bool $value)
+    public static function boolean2digit(bool $value): int
     {
         return $value ? 1 : 0;
     }
@@ -196,7 +199,7 @@ class Transform
      * @return string
      * @noinspection PhpUnused
      */
-    public static function jsonize($value)
+    public static function jsonize($value): string
     {
         return json_encode($value);
     }
@@ -206,7 +209,7 @@ class Transform
      *
      * @return mixed
      */
-    public static function unjsonize(?string $value=null)
+    public static function unjsonize(?string $value=null): mixed
     {
         if ($value===null){
             return 'null';
@@ -219,7 +222,7 @@ class Transform
      *
      * @return string
      */
-    public static function string($val)
+    public static function string($val): string
     {
         return (string)$val;
     }
@@ -229,31 +232,21 @@ class Transform
      *
      * @return int
      */
-    public static function intVal($val)
+    public static function intVal($val): int
     {
         return (int)$val;
     }
 
     /**
      * @param string $string
-     * @param array  $options
+     * @param array $options
      *
-     * @return mixed|string
+     * @return string
+     * @deprecated Use Sanovskiy\Utility\NamingStyle\NamingStyle::toCamelCase()
      */
-    static public function CCName(string $string, $options = [])
+    static public function CCName(string $string, array $options = []): string
     {
-        $firstCharUpper = isset($options[0]) ? !!$options[0] : true;
-        $s = strtolower($string);
-        $s = str_replace(array('_', '-', '/'), array(' ', ' ', '_'), $s);
-        $s = ucwords($s);
-        $s = str_replace(' ', '', $s);
-        if (!$firstCharUpper) {
-            $s = strtolower(substr($s, 0, 1)) . substr($s, 1);
-        }
-        if (preg_match('/^\d/', $s)) {
-            $s = 'd' . $s;
-        }
-        return $s;
+        return NamingStyle::toCamelCase($string,!isset($options[0]) || !!$options[0]);
     }
 
     /**
@@ -261,7 +254,7 @@ class Transform
      *
      * @return string
      */
-    public static function serialize($data)
+    public static function serialize($data): string
     {
         return serialize($data);
     }
@@ -271,7 +264,7 @@ class Transform
      *
      * @return mixed
      */
-    public static function unserialize($data)
+    public static function unserialize($data): mixed
     {
         return unserialize($data);
     }

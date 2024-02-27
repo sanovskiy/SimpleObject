@@ -25,6 +25,7 @@ use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpNamespace;
 use Nette\PhpGenerator\PsrPrinter;
 use RuntimeException;
+use Sanovskiy\Utility\NamingStyle;
 
 class ModelGenerator
 {
@@ -123,7 +124,7 @@ class ModelGenerator
 
                 $this->output->inline('Table ' . $tableName . '... ');
                 $modelsDirRules = Util::getSettingsValue('subfolder_rules', $this->configName);
-                $CCName = Transform::CCName($tableName);
+                $CCName = NamingStyle::toCamelCase($tableName, true);
                 $folder = '';
                 $namespacePrefix = '';
                 if ($modelsDirRules) {
@@ -132,7 +133,7 @@ class ModelGenerator
                             $folder = $_params['folder'] . DIRECTORY_SEPARATOR;
                             $namespacePrefix = str_replace('/', '\\', $_params['folder']);
                             if (isset($_params['strip']) && $_params['strip']) {
-                                $CCName = Transform::CCName($result[2]);
+                                $CCName = NamingStyle::toCamelCase($result[2], true);
                             }
                             break;
                         }
@@ -241,7 +242,7 @@ class ModelGenerator
                 foreach ($fields as $num => $_row) {
                     $_row = array_change_key_case($_row, CASE_UPPER);
                     $colName = $_row['COLUMN_NAME'];
-                    $propertiesMapping[$colName] = Transform::CCName($colName);
+                    $propertiesMapping[$colName] = NamingStyle::toCamelCase($colName, true);
 
                     if (strtolower($dbSettings['driver']) === 'mysql') {
                         if ($_row['COLUMN_TYPE'] === 'int(1)') {

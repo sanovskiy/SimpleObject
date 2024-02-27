@@ -2,7 +2,7 @@
 
 namespace Sanovskiy\SimpleObject\FieldValues;
 
-use Stringable;
+use \Stringable;
 
 class NullValue implements Stringable
 {
