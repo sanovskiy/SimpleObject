@@ -1,18 +1,23 @@
 {
-    "name": "sanovskiy/simple-object",
-    "description": "Simple ORM for SQL databases",
-    "type": "library",
-    "license": "MIT",
-    "autoload": {
-        "psr-4": {
-            "Sanovskiy\\SimpleObject\\": "src/"
-        }
-    },
-    "authors": [
-        {
-            "name": "Pavel Terentyev",
-            "email": "pavel.terentyev@gmail.com"
-        }
-    ],
-    "require": {}
+  "name": "sanovskiy/simple-object",
+  "description": "Simple ORM for SQL databases",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Sanovskiy\\SimpleObject\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Pavel Terentyev",
+      "email": "pavel.terentyev@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^8.2",
+    "ext-pdo": "*",
+    "sanovskiy/traitlib": "^2.0",
+    "sanovskiy/utility": "^1.4"
+  }
 }

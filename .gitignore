@@ -1,1 +1,5 @@
+.idea
+/demo
 /vendor
+composer.lock
+!.gitkeep
