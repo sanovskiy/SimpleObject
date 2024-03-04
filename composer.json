@@ -1,0 +1,18 @@
+{
+    "name": "sanovskiy/simple-object",
+    "description": "Simple ORM for SQL databases",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Sanovskiy\\SimpleObject\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Pavel Terentyev",
+            "email": "pavel.terentyev@gmail.com"
+        }
+    ],
+    "require": {}
+}
