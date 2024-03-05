@@ -1,14 +1,15 @@
 <?php
 
-namespace Sanovskiy\SimpleObject;
+namespace Sanovskiy\SimpleObject\Collections;
 
 use Exception;
 use RuntimeException;
+use Sanovskiy\SimpleObject\ActiveRecordAbstract;
 use Sanovskiy\Traits\ArrayAccess;
 use Sanovskiy\Traits\Countable;
 use Sanovskiy\Traits\Iterator;
 
-class Collection implements \Iterator, \ArrayAccess, \Countable
+class Collection implements  \Iterator, \ArrayAccess, \Countable
 {
     use Iterator, ArrayAccess, Countable;
 
@@ -39,7 +40,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
     /**
      * SimpleObject_Collection constructor.
      *
-     * @param array $data Elements array
+     * @param ActiveRecordAbstract[] $data Elements array
      * @param string|null $forceClass
      */
     public function __construct(array $data = [], ?string $forceClass = null)
@@ -52,7 +53,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
                 $this->className = get_class($data[0]);
             }
             foreach ($data as $obj) {
-                if ($obj instanceof $this->className || is_subclass_of($obj, $this->className)) {
+                if ($obj instanceof $this->className) {
                     $this->records[] = $obj;
                 }
             }
@@ -65,7 +66,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection
      */
-    public function lock(bool $disallowUnlock = false): Collection
+    public function lock(bool $disallowUnlock = false): static
     {
         $this->isLocked = true;
         if ($disallowUnlock) {
@@ -78,7 +79,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection
      */
-    public function unlock(): Collection
+    public function unlock(): static
     {
         if (!$this->isUnlockable) {
             throw new RuntimeException('Collection is not unlockable.');
@@ -94,7 +95,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection
      */
-    public function setClassName(string $name): Collection
+    public function setClassName(string $name): static
     {
         if (empty($name)) {
             return $this;
@@ -266,7 +267,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      *
      * @return Collection
      */
-    public function getElementsByPropertyValue(string $property, mixed $value): Collection
+    public function getElementsByPropertyValue(string $property, mixed $value): static
     {
         $elements = new self;
         foreach ($this->records as $indexValue) {
@@ -310,7 +311,7 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
      * @return Collection
      * @throws Exception
      */
-    public function getElementsByFunctionResult(string $method, mixed $value): Collection
+    public function getElementsByFunctionResult(string $method, mixed $value): static
     {
         $elements = new self;
         foreach ($this->records as $indexValue) {
@@ -351,9 +352,6 @@ class Collection implements \Iterator, \ArrayAccess, \Countable
                 $values[$index] = $_;
             }
         }
-        //for ($index = 0; $index < count($this->records); $index++) {
-        //    $values[$index] = $this->records[$index]->{$property};
-        //}
         return $values;
     }
     //</editor-fold>

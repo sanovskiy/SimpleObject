@@ -8,9 +8,9 @@ use Error;
 use Exception;
 use Iterator;
 use PDO;
-use PDOException;
 use PDOStatement;
 use RuntimeException;
+use Sanovskiy\SimpleObject\Collections\QueryResult;
 use Sanovskiy\Utility\NamingStyle;
 
 class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
@@ -77,6 +77,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return static::$TableName;
     }
 
+    public static function getTableFields(): array
+    {
+        return array_keys(static::$propertiesMapping);
+    }
+
     public function getIdProperty(): string
     {
         return array_values(static::$propertiesMapping)[0];
@@ -84,7 +89,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     protected function getIdField(): string
     {
-        return array_keys(static::$propertiesMapping)[0];
+        return static::getTableFields()[0];
     }
 
     public static function isPropertyExist($name): bool
@@ -132,7 +137,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
         if ($forceLoad || !($result = RuntimeCache::getInstance()->get(static::class, $this->{$this->getIdProperty()}))) {
             try {
-                $query = "SELECT * FROM " . static::getTableName() . " WHERE " . $this->getIdField() . " = ?";
+                $query = sprintf("SELECT * FROM %s WHERE %s = ?", static::getTableName(), $this->getIdField());
                 $db = static::getReadConnection();
                 $statement = $db->prepare($query);
 
@@ -179,33 +184,33 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @param string|PDOStatement $source
      * @param array $bind
      *
-     * @return Collection
+     * @return QueryResult
+     * @throws Exception
      */
-    public static function factory(PDOStatement|string $source, array $bind = []): Collection
+    public static function factory(PDOStatement|string $source, array $bind = []): QueryResult
     {
         if (!is_string($source) && !($source instanceof PDOStatement)) {
             throw new RuntimeException('Unknown type ' . gettype($source) . '. Expected string or PDOStatement');
         }
-
+        $sql = null;
         if (is_string($source)) {
-            $source = ConnectionManager::getConnection(static::$SimpleObjectConfigNameRead)->prepare($source);
+            $sql = $source;
+            $source = ConnectionManager::getConnection(static::$SimpleObjectConfigNameRead)->prepare($sql);
         }
 
         $source->execute($bind);
 
-        $collection = new Collection();
-        $collection->setClassName(static::class);
+        $data = [];
 
         while ($row = $source->fetch(PDO::FETCH_ASSOC)) {
-            if (count($missingFields = array_diff(array_keys($row), array_keys(static::$propertiesMapping))) > 0) {
+            if (count($missingFields = array_diff(array_keys($row), static::getTableFields())) > 0) {
                 throw new RuntimeException('Missing fields ' . implode(', ', $missingFields));
             }
             $entity = new static();
             $entity->populate($row);
-            $collection->push($entity);
+            $data[]=$entity;
         }
-
-        return $collection;
+        return new QueryResult($data,[],$sql,$source);
     }
 
     public static function one(array $conditions): ?static
@@ -213,10 +218,10 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return static::find($conditions)->getElement();
     }
 
-    public static function find(array $conditions): Collection
+    public static function find(array $conditions): QueryResult
     {
         // TODO: Add filtering logic
-        return new Collection();
+        return new QueryResult([]);
     }
 
     public static function getCount(array $conditions): int
@@ -295,7 +300,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             'ReadConnection' => ConnectionManager::getConnection(static::$SimpleObjectConfigNameRead),
             'WriteConnection' => ConnectionManager::getConnection(static::$SimpleObjectConfigNameWrite),
             'TableName' => static::$TableName,
-            'TableFields' => array_keys(static::$propertiesMapping),
+            'TableFields' => static::getTableFields(),
             'Properties' => array_values(static::$propertiesMapping),
             'SimpleObjectConfigNameRead' => static::$SimpleObjectConfigNameRead,
             'SimpleObjectConfigNameWrite' => static::$SimpleObjectConfigNameWrite,
