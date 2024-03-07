@@ -15,13 +15,14 @@ use InvalidArgumentException;
  * @method string getModelsPath() Returns the models path.
  * @method string getModelsNamespace() Returns the models namespace.
  * @method string getName() Returns the connection name.
+ * @method string getConnectionOptions() Returns the connection name.
  */
 class ConnectionConfig
 {
     public static function factory(array $config, string $name = 'default'): self
     {
         if (!self::validateConfig($config)) {
-            throw new InvalidArgumentException("Invalid configuration provided.");
+            throw new InvalidArgumentException("Invalid configuration provided. ".self::$validatorMessage);
         }
 
         return new self($name, $config['connection'], $config['path_models'], $config['models_namespace']);
@@ -31,24 +32,28 @@ class ConnectionConfig
     {
     }
 
-
+    private static string $validatorMessage = '';
     private static function validateConfig(array $config): bool
     {
+        self::$validatorMessage = '';
         $requiredKeys = ['connection', 'path_models', 'models_namespace'];
         foreach ($requiredKeys as $key) {
             if (!array_key_exists($key, $config)) {
+                self::$validatorMessage = 'Missing '.$key.' parameter';
                 return false;
             }
         }
 
         $connectionKeys = ['driver', 'host', 'database', 'user', 'password', 'charset'];
         if (count(array_intersect_key(array_flip($connectionKeys), $config['connection'])) !== count($connectionKeys)) {
+            self::$validatorMessage = 'connection section must contain '.implode(', ',$connectionKeys);
             return false;
         }
 
 
         $allowedDrivers = ['pgsql', 'mysql', 'mssql'];
-        if (!in_array(strtoupper($config['connection']['driver']), $allowedDrivers)) {
+        if (!in_array(strtolower($config['connection']['driver']), $allowedDrivers)) {
+            self::$validatorMessage = 'Allowed drivers are '.implode(', ',$allowedDrivers);;
             return false;
         }
 
@@ -58,7 +63,13 @@ class ConnectionConfig
     public function getDSN(): string
     {
         $port = $this->getPort() ? ";port={$this->getPort()}" : '';
-        return sprintf('%s:host=%s;dbname=%s;charset=%s%s', $this->getDriver(), $this->getHost(), $this->getDatabase(), $this->getCharset(), $port);
+
+        return match ($this->getDriver()) {
+            'mysql' => sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', $this->getHost(), $this->getPort(), $this->getDatabase(), $this->getCharset()),
+            'pgsql' => sprintf('pgsql:host=%s;port=%s;dbname=%s;user=%s;password=%s', $this->getHost(), $this->getPort(), $this->getDatabase(), $this->getUser(), $this->getPassword()),
+            'mssql' => sprintf('sqlsrv:Server=%s,%s;Database=%s;TrustServerCertificate=true', $this->getHost(), $this->getPort(), $this->getDatabase()),
+            default => throw new \InvalidArgumentException('Unsupported database driver: ' . $this->getDriver()),
+        };
     }
 
 
@@ -88,6 +99,7 @@ class ConnectionConfig
             'getModelsPath' => $this->modelsPath,
             'getModelsNamespace' => $this->modelsNamespace,
             'getName' => $this->name,
+            'getConnectionOptions' => $this->connectionInfo['options']??[],
             default => null,
         };
     }

@@ -3,6 +3,7 @@
 namespace Sanovskiy\SimpleObject;
 
 use Exception;
+use InvalidArgumentException;
 use PDO;
 use PDOException;
 
@@ -56,15 +57,29 @@ class ConnectionManager
         $password = $config->getPassword();
 
         try {
-            self::$connections[$configName] = new PDO($dsn, $user, $password);
+            self::$connections[$configName] = new PDO($dsn, $user, $password,$config->getConnectionOptions());
             self::$connections[$configName]->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             self::$connections[$configName]->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
-            self::$connections[$configName]->exec("SET NAMES {$config->getCharset()}"); // Set charset
+
+            switch ($config->getDriver()) {
+                case 'mysql':
+                    self::$connections[$configName]->exec("SET NAMES {$config->getCharset()}");
+                    break;
+                case 'pgsql':
+                    self::$connections[$configName]->exec("SET CLIENT_ENCODING TO '{$config->getCharset()}'");
+                    break;
+                case 'mssql':
+                    //self::$connections[$configName]->exec("SET NAMES {$config->getCharset()}");
+                    // Для SQL Server нет необходимости в установке кодировки
+                    break;
+                default:
+                    throw new InvalidArgumentException('Unsupported database driver: ' . $config->getDriver());
+            }
+
             return true;
         } catch (PDOException $e) {
             throw new Exception("Failed to reconnect to database for configuration '$configName': " . $e->getMessage());
-        }
-    }
+        }    }
 
     /**
      * Get a PDO connection based on the configuration name.
@@ -79,7 +94,7 @@ class ConnectionManager
             throw new Exception("Connection configuration '$configName' not found.");
         }
 
-        if (self::isConnectionAlive($configName)) {
+        if (!self::isConnectionAlive($configName)) {
             self::reconnect($configName); // Reconnect if not already connected
         }
 

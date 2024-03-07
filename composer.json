@@ -12,12 +12,22 @@
     {
       "name": "Pavel Terentyev",
       "email": "pavel.terentyev@gmail.com"
+    },
+    {
+      "name": "ChatGPT",
+      "email": "chatgpt@openai.com",
+      "role": "AI Assistant"
     }
   ],
   "require": {
     "php": "^8.2",
     "ext-pdo": "*",
     "sanovskiy/traitlib": "^2.0",
-    "sanovskiy/utility": "^1.4"
+    "sanovskiy/utility": "^1.4",
+    "nette/php-generator": "^4.1"
+  },
+  "suggest": {
+    "monolog/monolog": "Allows logging from SimpleObject core functions",
+    "robmorgan/phinx": "Allows creating migrations"
   }
 }
