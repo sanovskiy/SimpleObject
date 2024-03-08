@@ -20,7 +20,7 @@
     }
   ],
   "require": {
-    "php": "^8.3",
+    "php": "^8.2",
     "ext-pdo": "*",
     "sanovskiy/traitlib": "^2.0",
     "sanovskiy/utility": "^1.4",
