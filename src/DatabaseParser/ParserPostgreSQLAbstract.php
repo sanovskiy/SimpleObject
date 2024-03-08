@@ -6,12 +6,12 @@ use PDO;
 use Sanovskiy\SimpleObject\DatabaseParser\Schemas\ColumnSchema;
 use Sanovskiy\SimpleObject\DatabaseParser\Schemas\TableSchema;
 
-class ParserMSSQL extends AbstractParser
+class ParserPostgreSQLAbstract extends ParserAbstract
 {
 
     public function getDatabaseTables(): array
     {
-        $statement = $this->connection->prepare("SELECT table_name FROM information_schema.tables WHERE table_catalog = :database");
+        $statement = $this->connection->prepare('SELECT table_name FROM information_schema.tables WHERE table_catalog = :database AND table_schema=\'public\'');
         $statement->execute(['database' => $this->database]);
         $tableList = $statement->fetchAll(PDO::FETCH_COLUMN);
         return array_combine($tableList, array_map(fn ($tableName) => new TableSchema($tableName, $this), $tableList));
@@ -19,63 +19,60 @@ class ParserMSSQL extends AbstractParser
 
     public function getTableColumns(string $tableName): array
     {
-        $statement = $this->connection->prepare("SELECT column_name, data_type, is_nullable, column_default, ordinal_position
+        $statement = $this->connection->prepare('SELECT column_name, data_type, is_nullable, column_default, ordinal_position, udt_name
             FROM information_schema.columns
             WHERE table_name = :tableName
-            AND table_catalog = :database");
+            AND table_catalog = :database');
         $statement->execute(['tableName' => $tableName, 'database' => $this->database]);
         $columnsData = $statement->fetchAll(PDO::FETCH_ASSOC);
 
         $columns = [];
         foreach ($columnsData as $columnData) {
             $name = $columnData['column_name'];
-            $dataType = $columnData['data_type'];
+            $dataType = $columnData['udt_name'];
             $nullable = $columnData['is_nullable'] === 'YES';
             $default = $columnData['column_default'];
-            $primaryKey = false; // MSSQL doesn't directly specify primary keys in this table
+            $primaryKey = false; // PostgreSQL doesn't directly specify primary keys in this table
 
-            // Fetching primary key information
-            $statement = $this->connection->prepare("SELECT column_name
-                FROM information_schema.key_column_usage
+            // Check if column is part of a primary key constraint
+            $statement = $this->connection->prepare('SELECT constraint_name
+                FROM information_schema.constraint_column_usage
                 WHERE table_name = :tableName
                 AND column_name = :columnName
-                AND table_catalog = :database");
+                AND table_catalog = :database');
             $statement->execute(['tableName' => $tableName, 'columnName' => $name, 'database' => $this->database]);
-            $primaryKeyData = $statement->fetch(PDO::FETCH_ASSOC);
-            if ($primaryKeyData) {
+            $constraintData = $statement->fetch(PDO::FETCH_ASSOC);
+            if ($constraintData && str_contains($constraintData['constraint_name'], 'pkey')) {
                 $primaryKey = true;
             }
 
-            // Foreign key information retrieval
+            // Fetch foreign key information
             $foreignKey = null;
             $references = null;
             // Fetching foreign key constraints
-            $statement = $this->connection->prepare("SELECT  
-    fk.name AS FK_NAME,    
-    ref_tab.name AS REFERENCED_TABLE,
-    ref_col.name AS REFERENCED_COLUMN
-FROM 
-    sys.foreign_key_columns AS fkc
-INNER JOIN 
-    sys.objects AS fk ON fk.object_id = fkc.constraint_object_id
-INNER JOIN 
-    sys.tables AS parent_tab ON parent_tab.object_id = fkc.parent_object_id
-INNER JOIN 
-    sys.schemas AS sch ON parent_tab.schema_id = sch.schema_id
-INNER JOIN 
-    sys.columns AS parent_col ON parent_col.column_id = fkc.parent_column_id AND parent_col.object_id = parent_tab.object_id
-INNER JOIN 
-    sys.tables AS ref_tab ON ref_tab.object_id = fkc.referenced_object_id
-INNER JOIN 
-    sys.columns AS ref_col ON ref_col.column_id = fkc.referenced_column_id AND ref_col.object_id = ref_tab.object_id
-WHERE 
-    parent_tab.name = :tableName 
-    AND parent_col.name = :columnName");
-            $statement->execute(['tableName' => $tableName, 'columnName' => $name]);
+            $statement = $this->connection->prepare('SELECT
+                tc.constraint_name,
+                kcu.column_name,
+                ccu.table_name AS foreign_table_name,
+                ccu.column_name AS foreign_column_name
+            FROM
+                information_schema.table_constraints AS tc
+            JOIN
+                information_schema.key_column_usage AS kcu
+                    ON tc.constraint_name = kcu.constraint_name
+            JOIN
+                information_schema.constraint_column_usage AS ccu
+                    ON ccu.constraint_name = tc.constraint_name
+            WHERE
+                tc.constraint_type = \'FOREIGN KEY\'
+                AND tc.table_name = :tableName
+                AND kcu.column_name = :columnName
+                AND tc.constraint_catalog = :database');
+            $statement->execute(['tableName' => $tableName, 'columnName' => $name, 'database' => $this->database]);
             $foreignKeyData = $statement->fetch(PDO::FETCH_ASSOC);
             if ($foreignKeyData) {
-                $foreignKey = $foreignKeyData['FK_NAME'];
-                $references = ['table' => $foreignKeyData['REFERENCED_TABLE'], 'column' => $foreignKeyData['REFERENCED_COLUMN']];
+                $foreignKey = $foreignKeyData['constraint_name'];
+                $references = ['table' => $foreignKeyData['foreign_table_name'], 'column' => $foreignKeyData['foreign_column_name']];
             }
 
             // Unique constraint check
