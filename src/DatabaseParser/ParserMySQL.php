@@ -6,7 +6,7 @@ use PDO;
 use Sanovskiy\SimpleObject\DatabaseParser\Schemas\ColumnSchema;
 use Sanovskiy\SimpleObject\DatabaseParser\Schemas\TableSchema;
 
-class ParserMySQLAbstract extends ParserAbstract
+class ParserMySQL extends ParserAbstract
 {
 
     /**
