@@ -6,6 +6,7 @@ use Exception;
 use InvalidArgumentException;
 use PDO;
 use PDOException;
+use RuntimeException;
 
 class ConnectionManager
 {
@@ -42,12 +43,12 @@ class ConnectionManager
      *
      * @param string $configName The name of the connection configuration to reconnect.
      * @return bool True if reconnection was successful, false otherwise.
-     * @throws Exception If the connection configuration is not found or PDO connection fails.
+     * @throws InvalidArgumentException If the connection configuration is not found or PDO connection fails.
      */
     public static function reconnect(string $configName): bool
     {
         if (!isset(self::$connectionConfigs[$configName])) {
-            throw new Exception("Connection configuration '$configName' not found.");
+            throw new InvalidArgumentException("Connection configuration '$configName' not found.");
         }
 
         /** @var ConnectionConfig $config */
@@ -58,8 +59,8 @@ class ConnectionManager
 
         try {
             self::$connections[$configName] = new PDO($dsn, $user, $password,$config->getConnectionOptions());
-            self::$connections[$configName]->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            self::$connections[$configName]->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            self::$connections[$configName]->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            self::$connections[$configName]->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
             switch ($config->getDriver()) {
                 case 'mysql':
@@ -78,7 +79,7 @@ class ConnectionManager
 
             return true;
         } catch (PDOException $e) {
-            throw new Exception("Failed to reconnect to database for configuration '$configName': " . $e->getMessage());
+            throw new RuntimeException("Failed to reconnect to database for configuration '$configName': " . $e->getMessage());
         }    }
 
     /**
@@ -86,12 +87,12 @@ class ConnectionManager
      *
      * @param string $configName The name of the connection configuration.
      * @return PDO The PDO connection.
-     * @throws Exception If the connection configuration is not found or PDO connection fails.
+     * @throws InvalidArgumentException If the connection configuration is not found or PDO connection fails.
      */
     public static function getConnection(string $configName): PDO
     {
         if (!isset(self::$connectionConfigs[$configName])) {
-            throw new Exception("Connection configuration '$configName' not found.");
+            throw new InvalidArgumentException("Connection configuration '$configName' not found.");
         }
 
         if (!self::isConnectionAlive($configName)) {
@@ -99,6 +100,20 @@ class ConnectionManager
         }
 
         return self::$connections[$configName];
+    }
+
+    public static function getConfig(string $configName): ConnectionConfig
+    {
+        if (!isset(self::$connectionConfigs[$configName])) {
+            throw new InvalidArgumentException("Connection configuration '$configName' not found.");
+        }
+
+        return self::$connectionConfigs[$configName];
+    }
+
+    public static function getConnectionNames(): array
+    {
+        return array_keys(self::$connectionConfigs);
     }
 
 
@@ -115,7 +130,7 @@ class ConnectionManager
         }
         try {
             return (bool) self::$connections[$configName]->query('SELECT 1');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
     }

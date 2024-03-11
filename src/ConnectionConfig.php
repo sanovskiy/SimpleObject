@@ -16,44 +16,61 @@ use InvalidArgumentException;
  * @method string getModelsNamespace() Returns the models namespace.
  * @method string getName() Returns the connection name.
  * @method string getConnectionOptions() Returns the connection name.
+ * @method string getBaseExtends() Returns the connection name.
+ * @method array  getSubFolderRules() Returns sub folder rules.
  */
 class ConnectionConfig
 {
     public static function factory(array $config, string $name = 'default'): self
     {
         if (!self::validateConfig($config)) {
-            throw new InvalidArgumentException("Invalid configuration provided. ".self::$validatorMessage);
+            throw new InvalidArgumentException("Invalid configuration provided. " . self::$validatorMessage);
         }
 
-        return new self($name, $config['connection'], $config['path_models'], $config['models_namespace']);
+        return new self(
+            $name,
+            $config['connection'],
+            $config['path_models'],
+            $config['models_namespace'],
+            $config['base_class_extends'] ?? ActiveRecordAbstract::class,
+            $config['sub_folders_rules'] ?? [],
+        );
     }
 
-    public function __construct(private readonly string $name, private readonly array $connectionInfo, private readonly string $modelsPath, private readonly string $modelsNamespace)
+    public function __construct(
+        private readonly string $name,
+        private readonly array  $connectionInfo,
+        private readonly string $modelsPath,
+        private readonly string $modelsNamespace,
+        private readonly string $baseClassExtends,
+        private readonly array  $subFolderRules,
+    )
     {
     }
 
     private static string $validatorMessage = '';
+
     private static function validateConfig(array $config): bool
     {
         self::$validatorMessage = '';
         $requiredKeys = ['connection', 'path_models', 'models_namespace'];
         foreach ($requiredKeys as $key) {
             if (!array_key_exists($key, $config)) {
-                self::$validatorMessage = 'Missing '.$key.' parameter';
+                self::$validatorMessage = 'Missing ' . $key . ' parameter';
                 return false;
             }
         }
 
         $connectionKeys = ['driver', 'host', 'database', 'user', 'password', 'charset'];
         if (count(array_intersect_key(array_flip($connectionKeys), $config['connection'])) !== count($connectionKeys)) {
-            self::$validatorMessage = 'connection section must contain '.implode(', ',$connectionKeys);
+            self::$validatorMessage = 'connection section must contain ' . implode(', ', $connectionKeys);
             return false;
         }
 
 
         $allowedDrivers = ['pgsql', 'mysql', 'mssql'];
         if (!in_array(strtolower($config['connection']['driver']), $allowedDrivers)) {
-            self::$validatorMessage = 'Allowed drivers are '.implode(', ',$allowedDrivers);;
+            self::$validatorMessage = 'Allowed drivers are ' . implode(', ', $allowedDrivers);;
             return false;
         }
 
@@ -86,7 +103,7 @@ class ConnectionConfig
     /** Getters for $this->connectionInfo fields **/
 
 
-    public function __call($name,$args)
+    public function __call($name, $args)
     {
         return match ($name) {
             'getDriver' => strtolower($this->connectionInfo['driver']),
@@ -99,7 +116,9 @@ class ConnectionConfig
             'getModelsPath' => $this->modelsPath,
             'getModelsNamespace' => $this->modelsNamespace,
             'getName' => $this->name,
-            'getConnectionOptions' => $this->connectionInfo['options']??[],
+            'getConnectionOptions' => $this->connectionInfo['options'] ?? [],
+            'getSubFolderRules' => $this->subFolderRules,
+            'getBaseExtends' => $this->baseClassExtends,
             default => null,
         };
     }

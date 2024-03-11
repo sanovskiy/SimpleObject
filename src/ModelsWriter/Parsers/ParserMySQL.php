@@ -1,10 +1,10 @@
 <?php
 
-namespace Sanovskiy\SimpleObject\DatabaseParser;
+namespace Sanovskiy\SimpleObject\ModelsWriter\Parsers;
 
 use PDO;
-use Sanovskiy\SimpleObject\DatabaseParser\Schemas\ColumnSchema;
-use Sanovskiy\SimpleObject\DatabaseParser\Schemas\TableSchema;
+use Sanovskiy\SimpleObject\ModelsWriter\Schemas\ColumnSchema;
+use Sanovskiy\SimpleObject\ModelsWriter\Schemas\TableSchema;
 
 class ParserMySQL extends ParserAbstract
 {
@@ -69,7 +69,7 @@ class ParserMySQL extends ParserAbstract
 
             $column = new ColumnSchema(
                 name: $name,
-                data_type: $dataType,
+                original_data_type: $dataType,
                 nullable: $nullable,
                 default_value: $default,
                 primary_key: $primaryKey,

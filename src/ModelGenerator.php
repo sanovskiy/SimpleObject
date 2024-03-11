@@ -2,7 +2,7 @@
 
 namespace Sanovskiy\SimpleObject;
 
-use Sanovskiy\SimpleObject\DatabaseParser\Schemas\TableSchema;
+use Sanovskiy\SimpleObject\ModelsWriter\Schemas\TableSchema;
 
 class ModelGenerator
 {

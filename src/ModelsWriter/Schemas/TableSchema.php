@@ -1,8 +1,9 @@
 <?php
 
-namespace Sanovskiy\SimpleObject\DatabaseParser\Schemas;
+namespace Sanovskiy\SimpleObject\ModelsWriter\Schemas;
 
-use Sanovskiy\SimpleObject\DatabaseParser\ParserInterface;
+use Sanovskiy\SimpleObject\ModelsWriter\Parsers\ParserInterface;
+use Sanovskiy\Utility\NamingStyle;
 
 class TableSchema
 {
@@ -16,5 +17,10 @@ class TableSchema
     public function getColumns(): array
     {
         return $this->parser->getTableColumns($this->tableName);
+    }
+
+    public function getModelName():string
+    {
+        return NamingStyle::toCamelCase($this->tableName, capitalizeFirstCharacter: true);
     }
 }

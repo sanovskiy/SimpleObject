@@ -10,9 +10,9 @@ class JsonTransformer extends DataTransformerAbstract
         return json_decode($value, $format);
     }
 
-    public function toDatabaseValue($value, $format = null)
+    public function toDatabaseValue($value, $format = null): string
     {
-        return json_encode($value);
+        return (string) json_encode($value);
     }
 
     public function isValidDatabaseData($value): bool
