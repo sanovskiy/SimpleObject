@@ -7,13 +7,16 @@ class ExtendedCLIMate extends \League\CLImate\CLImate
     protected int $indentation = 0;
     protected string $indentationCharacter = "\t";
 
-    public function out(string $str): mixed
+    public function out(string $str, bool $noIndent = false): mixed
     {
-        return parent::out($this->getIndentStr() . $str);
+        return parent::out($this->getIndentStr($noIndent) . $str);
     }
 
-    public function getIndentStr(): string
+    public function getIndentStr(bool $noIndent=false): string
     {
+        if ($noIndent){
+            return '';
+        }
         return str_repeat($this->indentationCharacter, $this->indentation);
     }
 
@@ -35,9 +38,9 @@ class ExtendedCLIMate extends \League\CLImate\CLImate
         $this->indentation = 0;
     }
 
-    public function newline($num=1)
+    public function newline($num = 1)
     {
-        $this->inline(str_repeat(PHP_EOL,$num));
+        $this->inline(str_repeat(PHP_EOL, $num));
     }
 
     /**

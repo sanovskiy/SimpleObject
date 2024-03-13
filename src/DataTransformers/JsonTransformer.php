@@ -7,15 +7,15 @@ use InvalidArgumentException;
 class JsonTransformer extends DataTransformerAbstract
 {
 
-    public static function toProperty($value, $format = true)
+    public static function toProperty($value, $params = true)
     {
         if (!self::isValidDatabaseData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
         }
-        return json_decode($value, $format);
+        return json_decode($value, $params);
     }
 
-    public static function toDatabaseValue($value, $format = null): string
+    public static function toDatabaseValue($value, $params = null): string
     {
         if (!self::isValidPropertyData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);

@@ -3,6 +3,7 @@
 namespace Sanovskiy\SimpleObject\Query;
 
 use InvalidArgumentException;
+use Project\Models\One\Base\Acl\Person;
 use Sanovskiy\SimpleObject\ActiveRecordAbstract;
 
 class Filter
@@ -10,12 +11,27 @@ class Filter
     protected ?string $sql = null;
     protected ?array $bind = null;
 
-    public function __construct(protected string $modelClass, protected array $filters)
+
+    public function __construct(protected ActiveRecordAbstract|string $modelClass, protected array $filters)
     {
         if (!is_subclass_of($modelClass, ActiveRecordAbstract::class)) {
             throw new InvalidArgumentException('Model class must be a subclass of ActiveRecordAbstract');
         }
+        if (is_object($this->modelClass)){
+            $this->modelClass = get_class($this->modelClass);
+        }
         $this->buildQuery();
+    }
+
+    protected function substituteColumnName(string $key): string
+    {
+        if ($this->modelClass::isPropertyExist($key)){
+            return $key;
+        }
+        if ($this->modelClass::isPropertyExist($key)){
+            return $this->modelClass::getPropertyField($key);
+        }
+        return $key;
     }
 
     public function getSQL(): string
@@ -40,7 +56,7 @@ class Filter
 
     }
 
-    protected static function isMixedKeysArray($arr): bool
+    protected function isMixedKeysArray($arr): bool
     {
         if (!is_array($arr)) {
             return false;
@@ -63,7 +79,7 @@ class Filter
     const FILTER_TYPE_SUB_FILTER = 0b1000; // key is numeric or ':AND' or ':OR'
     const FILTER_TYPE_EXPRESSION = 0b10000; // value is instance of QueryExpression
 
-    public static function getFilterTypeName($type): string
+    public function getFilterTypeName($type): string
     {
         $types = [
             self::FILTER_TYPE_UNKNOWN => 'Unknown',
@@ -76,33 +92,35 @@ class Filter
         return array_key_exists($type, $types) ? $types[$type] : 'ERROR: Unsupported type';
     }
 
-    protected static function detectFilterType($key, $value): int
+    protected function detectFilterType($key, $value): int
     {
-        $type = match (true) {
+        var_dump([
+            $key, $value, !is_numeric($key), is_scalar($value),$this->modelClass::isTableFieldExist($key)
+        ]);
+        return match (true) {
             ($value instanceof QueryExpression) => self::FILTER_TYPE_EXPRESSION,
-            (!is_numeric($key) && is_scalar($value)) => self::FILTER_TYPE_SCALAR,
-            (is_numeric($key) && !self::isMixedKeysArray($value) && is_array($value) && count($value) === 3 && is_string($value[0]) && is_string($value[1])) => self::FILTER_TYPE_COMPARE_LONG,
-            (!is_numeric($key) && !in_array($key,[':AND',':OR']) && is_array($value) && !self::isMixedKeysArray($value) && count($value) === 2) => self::FILTER_TYPE_COMPARE_SHORT,
-            ($key === ':AND' || $key === ':OR'), (is_numeric($key) && is_array($value) && !self::isMixedKeysArray($value)) => self::FILTER_TYPE_SUB_FILTER,
+            (!is_numeric($key) && is_scalar($value) && $this->modelClass::isTableFieldExist($key)) => self::FILTER_TYPE_SCALAR,
+            (is_numeric($key) && !$this->isMixedKeysArray($value) && is_array($value) && count($value) === 3 && is_string($value[0]) && is_string($value[1])) => self::FILTER_TYPE_COMPARE_LONG,
+            (!is_numeric($key) && !in_array($key,[':AND',':OR']) && is_array($value) && !$this->isMixedKeysArray($value) && count($value) === 2) => self::FILTER_TYPE_COMPARE_SHORT,
+            ($key === ':AND' || $key === ':OR'), (is_numeric($key) && is_array($value) && !$this->isMixedKeysArray($value)) => self::FILTER_TYPE_SUB_FILTER,
             default => self::FILTER_TYPE_UNKNOWN
         };
-
-        return $type;
     }
 
-    public static function buildFilters(array $filters): array
+    public function buildFilters(array $filters): array
     {
         $sql = '';
         $bind = [];
 
         foreach ($filters as $key => $value) {
-            $filterType = self::detectFilterType($key, $value);
+            $key = $this->substituteColumnName($key);
+            $filterType = $this->detectFilterType($key, $value);
 
             switch ($filterType) {
                 case self::FILTER_TYPE_SUB_FILTER:
                     // Handle AND/OR group
                     $groupType = substr($key, 1);
-                    $subFilters = self::buildFilters($value);
+                    $subFilters = $this->buildFilters($value);
                     if (!empty($subFilters['sql'])) {
                         if (!empty($sql)) {
                             $sql .= sprintf(" %s ", $groupType);

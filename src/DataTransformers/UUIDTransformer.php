@@ -8,7 +8,7 @@ class UUIDTransformer extends DataTransformerAbstract
 {
     protected static string $pattern = '/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i';
 
-    public static function toProperty($value, $format = null): string
+    public static function toProperty($value, $params = null): string
     {
         if (!self::isValidDatabaseData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
@@ -16,7 +16,7 @@ class UUIDTransformer extends DataTransformerAbstract
         return $value;
     }
 
-    public static function toDatabaseValue($value, $format = null): string
+    public static function toDatabaseValue($value, $params = null): string
     {
         if (!self::isValidPropertyData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);

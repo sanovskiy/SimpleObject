@@ -35,4 +35,18 @@ class Logic extends AbstractWriter
     {
         return;
     }
+
+    protected function getModelHeader(): string
+    {
+        $curDate = (new \DateTime())->format('Y-m-d H:i:s');
+        return <<<LOGICMODEL
+/**
+ * This file created automatically {$curDate} by SimpleObject model generator
+ * This file will NOT be deleted on next models generation.
+ */
+
+LOGICMODEL;
+    }
+
+
 }

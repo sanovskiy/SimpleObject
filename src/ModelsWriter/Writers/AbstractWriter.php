@@ -53,7 +53,6 @@ abstract class AbstractWriter implements ModelWriterInterface
     {
         $this->createDir();
         $path = $this->getFullDirectoryName().$this->className.'.php';
-        //echo 'W: '.$this->getFullNamespace().'\\'.$this->className.' => '.$path.PHP_EOL;
 
         if (!file_exists($path)) {
             return (bool) file_put_contents(
@@ -68,5 +67,6 @@ abstract class AbstractWriter implements ModelWriterInterface
     {
         return '';
     }
+
 
 }

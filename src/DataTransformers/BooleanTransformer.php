@@ -8,7 +8,7 @@ use RuntimeException;
 class BooleanTransformer extends DataTransformerAbstract
 {
 
-    public static function toProperty($value, $format = null): bool
+    public static function toProperty($value, $params = null): bool
     {
         if (in_array($value, ['1',1,'true','Y'],true)){
             return true;
@@ -19,7 +19,7 @@ class BooleanTransformer extends DataTransformerAbstract
         throw new InvalidArgumentException('Unsupported value for '.__METHOD__);
     }
 
-    public static function toDatabaseValue($value, $format = null): string
+    public static function toDatabaseValue($value, $params = null): string
     {
         return match (static::$databaseDriver) {
             'mysql' => $value ? '1' : '0',

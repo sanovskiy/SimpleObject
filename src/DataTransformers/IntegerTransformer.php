@@ -6,7 +6,7 @@ use InvalidArgumentException;
 
 class IntegerTransformer extends DataTransformerAbstract
 {
-    public static function toProperty($value, $format = null): int
+    public static function toProperty($value, $params = null): int
     {
         if (!self::isValidDatabaseData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
@@ -15,7 +15,7 @@ class IntegerTransformer extends DataTransformerAbstract
         return (int) $value;
     }
 
-    public static function toDatabaseValue($value, $format = null): string
+    public static function toDatabaseValue($value, $params = null): string
     {
         if (!self::isValidPropertyData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);

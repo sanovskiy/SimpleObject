@@ -12,15 +12,15 @@ class DateTimeTransformer extends DataTransformerAbstract
     /**
      * @throws Exception
      */
-    public static function toProperty($value, $format=null): DateTime
+    public static function toProperty($value, $params=null): DateTime
     {
         return is_numeric($value) ? new DateTime("@$value") : new DateTime($value);
     }
 
-    public static function toDatabaseValue($value, $format=null): ?string
+    public static function toDatabaseValue($value, $params=null): ?string
     {
-        $format = $format??'Y-m-d H:i:s';
-        return $value->format($format);
+        $date_format = $params['format']??'Y-m-d H:i:s';
+        return $value->format($date_format);
     }
 
     public static function isValidDatabaseData($value): bool

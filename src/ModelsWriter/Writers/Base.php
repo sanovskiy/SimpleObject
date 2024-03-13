@@ -27,14 +27,25 @@ class Base extends AbstractWriter
             ->setComment(
                 sprintf("BaseModel class for table %s", $this->tableSchema->tableName)
             );
+        $model->addProperty('SimpleObjectConfigNameRead',$this->connectionConfig->getName())->setProtected()->setType('string')->setStatic();
+        $model->addProperty('SimpleObjectConfigNameWrite',$this->connectionConfig->getName())->setProtected()->setType('string')->setStatic();
 
         $propertiesMapping = [];
         $addUse = [];
         $transformations = [];
+
+        $maxColumnNameLength = max(array_map('strlen', array_keys($this->tableSchema->getColumns())));
         foreach ($this->tableSchema->getColumns() as $colName => $columnSchema) {
             $_property = NamingStyle::toCamelCase($colName, capitalizeFirstCharacter: true);
             $propertiesMapping[$colName] = $_property;
-            $model->addComment('@property ' . $columnSchema->getPHPType() . ' ' . $_property.' '.$columnSchema->data_type);
+            $comment = sprintf(
+                '@property %-'.$maxColumnNameLength.'s $%-'.$maxColumnNameLength.'s Uses value from %s (%s)',
+                $columnSchema->getPHPType(),
+                $_property,
+                $columnSchema->name,
+                $columnSchema->data_type
+            );
+            $model->addComment($comment);
             if ($columnSchema->getPHPType() === DateTime::class) {
                 $addUse[] = '\\' . DateTime::class;
             }
@@ -49,7 +60,7 @@ class Base extends AbstractWriter
 
         $model->addProperty('propertiesMapping', $propertiesMapping)->setType('array')
             ->setProtected()->addComment('Model properties for table field mapping')->setStatic();
-        $model->addProperty('transformations', $transformations)->setType('array')
+        $model->addProperty('dataTransformRules', $transformations)->setType('array')->setStatic()
             ->setProtected()->addComment('Default transformations for database values');
 
 
@@ -62,7 +73,7 @@ class Base extends AbstractWriter
                     ->setPublic()
                     ->setReturnType($refParent['class'])
                     ->setReturnNullable(true);
-                $_->setBody(sprintf("return ".$refObjectName."::one(['%s'=>\$this->%s]);", $refParent['property'], NamingStyle::toCamelCase($refParent['localProperty'],true)));
+                $_->setBody(sprintf("return ".$refObjectName."::one(['%s'=>\$this->%s]);", NamingStyle::toSnakeCase($refParent['property']), NamingStyle::toCamelCase($refParent['localProperty'],true)));
             }
         }
         if(!empty($this->references['many'])){
@@ -73,7 +84,7 @@ class Base extends AbstractWriter
                 $_ = $model->addMethod('get'.$refObjectName.'s')
                     ->setPublic()
                     ->setReturnType(Collection::class);
-                $_->setBody(sprintf("return ".$refObjectName."::find(['%s'=>\$this->%s]);", $refChild['property'], NamingStyle::toCamelCase($localProperty,true)));
+                $_->setBody(sprintf("return ".$refObjectName."::find(['%s'=>\$this->%s]);", NamingStyle::toSnakeCase($refChild['property']), NamingStyle::toCamelCase($localProperty,true)));
             }
         }
 
@@ -92,6 +103,19 @@ class Base extends AbstractWriter
     public function setReferences(array $references)
     {
         $this->references = $references;
+    }
+
+    protected function getModelHeader(): string
+    {
+        $curDate = (new \DateTime())->format('Y-m-d H:i:s');
+        return <<<BASEMODEL
+/**
+ * This file created automatically {$curDate} by SimpleObject model generator
+ * DO NOT modify this file because it WILL BE DELETED next time you generate models.
+ * Use logic model instead
+ */
+
+BASEMODEL;
     }
 
 

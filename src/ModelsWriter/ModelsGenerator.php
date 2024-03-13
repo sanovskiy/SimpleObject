@@ -2,6 +2,10 @@
 
 namespace Sanovskiy\SimpleObject\ModelsWriter;
 
+use Exception;
+use FilesystemIterator;
+use InvalidArgumentException;
+use JetBrains\PhpStorm\ArrayShape;
 use League\CLImate\CLImate;
 use RuntimeException;
 use Sanovskiy\SimpleObject\ConnectionConfig;
@@ -9,6 +13,8 @@ use Sanovskiy\SimpleObject\ConnectionManager;
 use Sanovskiy\SimpleObject\ExtendedCLIMate;
 use Sanovskiy\SimpleObject\ModelsWriter\Parsers\ParserAbstract;
 use Sanovskiy\SimpleObject\ModelsWriter\Parsers\ParserInterface;
+use Sanovskiy\SimpleObject\ModelsWriter\Schemas\ColumnSchema;
+use Sanovskiy\SimpleObject\ModelsWriter\Schemas\TableSchema;
 use Sanovskiy\SimpleObject\ModelsWriter\Writers\Base;
 use Sanovskiy\SimpleObject\ModelsWriter\Writers\Logic;
 use Sanovskiy\Utility\NamingStyle;
@@ -67,117 +73,190 @@ class ModelsGenerator
     public function run(): bool
     {
         $tStart = microtime(as_float: true);
-        $this->term->out("Reverse engineering database " . $this->connectionConfig->getDatabase() . ' (' . $this->connectionConfig->getName() . ')');
-        $this->term->increaseIndent();
-
+        $this->printStartMessage();
         try {
             $this->prepareDirs();
-            $this->term->newline();
-            $this->term->out('Generating files:');
-            $this->term->increaseIndent();
-            $tables = [];
-            foreach ($this->parser->getDatabaseTables() as $tableName => $databaseTable) {
-                $modelsDirRules = $this->connectionConfig->getSubFolderRules();
-                $ClassName = $databaseTable->getModelName();
-                $folder = '';
-                $namespaceAddon = '';
-                if ($modelsDirRules) {
-                    foreach ($modelsDirRules as $rule => $_params) {
-                        if (preg_match('/^(' . $rule . ')(.+)/', $tableName, $result)) {
-                            $namespaceAddon = '\\' . trim(
-                                    str_replace(
-                                        '/',
-                                        '\\',
-                                        $_params['folder'] ?? throw new RuntimeException('Missing folder for rule ' . $rule . ' in database config')
-                                    ), '\\');
-                            $folder = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $namespaceAddon) . DIRECTORY_SEPARATOR;
-
-                            if (isset($_params['strip']) && $_params['strip']) {
-                                $ClassName = NamingStyle::toCamelCase($result[2], capitalizeFirstCharacter: true);
-                            }
-                            break;
-                        }
-                    }
-                }
-                $tables[$tableName]['Base'] = new Base(
-                    connectionConfig: $this->connectionConfig,
-                    tableSchema: $databaseTable,
-                    className: $ClassName,
-                    directory: $this->connectionConfig->getModelsPath(),
-                    subDirectory: $folder,
-                    classNamespace: $this->connectionConfig->getModelsNamespace(),
-                    classNamespaceAddon: $namespaceAddon,
-                    classExtends: $this->connectionConfig->getBaseExtends()
-                );
-
-                $tables[$tableName]['Logic'] = new Logic(
-                    connectionConfig: $this->connectionConfig,
-                    tableSchema: $databaseTable,
-                    className: $ClassName,
-                    directory: $this->connectionConfig->getModelsPath(),
-                    subDirectory: $folder,
-                    classNamespace: $this->connectionConfig->getModelsNamespace(),
-                    classNamespaceAddon: $namespaceAddon,
-                    classExtends: $tables[$tableName]['Base']->getFullNamespace() . $tables[$tableName]['Base']->className
-                );
-
-            }
-            $this->term->decreaseIndent();
-
-            $refs = [];
-            foreach ($tables as $tableName => $writers) {
-                $columns = $writers['Base']->tableSchema->getColumns();
-                foreach ($columns as $colName => $column) {
-                    if (!empty($column->references['table'])) {
-                        // Many-to-One relationship
-                        $refs[$tableName]['one'][$colName] = [
-                            'localProperty' => $colName,
-                            'class' => $tables[$column->references['table']]['Logic']->getFullNamespace() . '\\' . $tables[$column->references['table']]['Logic']->className,
-                            'property' => NamingStyle::toCamelCase($column->references['column'], true)
-                        ];
-
-                        // One-to-Many relationship
-                        $refs[$column->references['table']]['many'][$column->references['column']] = [
-                            'class' => $writers['Logic']->getFullNamespace() . '\\' . $writers['Logic']->className,
-                            'property' => NamingStyle::toCamelCase($colName, true)
-                        ];
-                    }
-                }
-            }
-
-            $longest = max(array_map(fn($v) => strlen($v), array_keys($tables)));
-            //$this->term->out(str_repeat(' ', $longest + 11) . '[<blue>Base</blue>] [<light_cyan>Logc</light_cyan>]');
-            foreach ($tables as $tableName => $writers) {
-                if (!empty($refs[$tableName])) {
-                    $writers['Base']->setReferences($refs[$tableName]);
-                }
-                $this->term->inline($this->term->getIndentStr() . sprintf("Table %s %s", $tableName, str_repeat(' ', ($longest + 4 - strlen($tableName)))));
-                $writers['Base']->write();
-                $this->term->inline('[ <blue>Base</blue> ] ');
-                $writers['Logic']->write();
-                $this->term->inline('[ <light_cyan>Logic</light_cyan> ] ');
-                $this->term->newline();
-            }
-            $tEnd = microtime(as_float: true);
-            $this->term->decreaseIndent();
-            $this->term->out('');
-            $this->term->out('Time taken: ' . number_format((float)($tEnd - $tStart), 4, '.', '') . ' seconds');
-            $this->term->out('');
+            $this->generateModels();
+            $this->printExecutionTime($tStart);
             return true;
-        } catch (\Exception $e) {
-            $this->term->resetIndent();
-            $this->term->out('');
-            $this->term->red()->error($e->getMessage());
-            $this->term->error($e->getTraceAsString());
-            exit(1);
+        } catch (Exception $e) {
+            $this->handleException($e);
         }
+        return false;
+    }
+
+    private function printStartMessage(): void
+    {
+        $this->term->out("Reverse engineering database " . $this->connectionConfig->getDatabase() . ' (' . $this->connectionConfig->getName() . ')');
+        $this->term->increaseIndent();
+    }
+
+    private function generateModels(): void
+    {
+        $this->term->newline();
+        $this->term->out('Generating files:');
+        $this->term->increaseIndent();
+        $tables = $this->parseDatabaseTables();
+        $this->generateModelsFromTables($tables);
+        $this->term->decreaseIndent();
+    }
+
+    private function parseDatabaseTables(): array
+    {
+        $tables = [];
+        foreach ($this->parser->getDatabaseTables() as $tableName => $databaseTable) {
+            $tables[$tableName] = $this->parseTable($tableName, $databaseTable);
+        }
+        return $tables;
+    }
+
+    #[ArrayShape(['Base' => "\Sanovskiy\SimpleObject\ModelsWriter\Writers\Base", 'Logic' => "\Sanovskiy\SimpleObject\ModelsWriter\Writers\Logic"])]
+    private function parseTable(string $tableName, TableSchema $databaseTable): array
+    {
+        $modelsDirRules = $this->connectionConfig->getSubFolderRules();
+        $ClassName = $databaseTable->getModelName();
+        $folder = '';
+        $namespaceAddon = '';
+        if ($modelsDirRules) {
+            foreach ($modelsDirRules as $rule => $_params) {
+                if (preg_match('/^(' . $rule . ')(.+)/', $tableName, $result)) {
+                    $namespaceAddon = '\\' . trim(
+                            str_replace(
+                                '/',
+                                '\\',
+                                $_params['folder'] ?? throw new RuntimeException('Missing folder for rule ' . $rule . ' in database config')
+                            ), '\\');
+                    $folder = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $namespaceAddon) . DIRECTORY_SEPARATOR;
+
+                    if (isset($_params['strip']) && $_params['strip']) {
+                        $ClassName = NamingStyle::toCamelCase($result[2], capitalizeFirstCharacter: true);
+                    }
+                    break;
+                }
+            }
+        }
+
+        return [
+            'Base' => new Base(
+                connectionConfig: $this->connectionConfig,
+                tableSchema: $databaseTable,
+                className: $ClassName,
+                directory: $this->connectionConfig->getModelsPath(),
+                subDirectory: $folder,
+                classNamespace: $this->connectionConfig->getModelsNamespace(),
+                classNamespaceAddon: $namespaceAddon,
+                classExtends: $this->connectionConfig->getBaseExtends()
+            ),
+            'Logic' => new Logic(
+                connectionConfig: $this->connectionConfig,
+                tableSchema: $databaseTable,
+                className: $ClassName,
+                directory: $this->connectionConfig->getModelsPath(),
+                subDirectory: $folder,
+                classNamespace: $this->connectionConfig->getModelsNamespace(),
+                classNamespaceAddon: $namespaceAddon,
+                classExtends: $this->connectionConfig->getBaseExtends()
+            )
+        ];
+    }
+
+    private function generateModelsFromTables(array $tables): void
+    {
+        $refs = $this->generateReferences($tables);
+        $longest = max(array_map(fn($v) => strlen($v), array_keys($tables)));
+
+        foreach ($tables as $tableName => $writers) {
+            $this->generateModelForTable($tableName, $writers, $refs, $longest);
+        }
+    }
+
+    private function generateModelForTable(string $tableName, array $writers, array $refs, int $longest): void
+    {
+        if (!empty($refs[$tableName])) {
+            $writers['Base']->setReferences($refs[$tableName]);
+        }
+        $this->printTableGenerationMessage($tableName, $longest);
+        $this->generateBaseModel($writers['Base']);
+        $this->term->inline('[ <blue>Base</blue> ] ');
+        $this->generateLogicModel($writers['Logic']);
+        $this->term->inline('[ <light_cyan>Logic</light_cyan> ] ');
+        $this->term->newline();
+    }
+
+    private function generateReferences(array $tables): array
+    {
+        $refs = [];
+        foreach ($tables as $tableName => $writers) {
+            $columns = $writers['Base']->tableSchema->getColumns();
+            foreach ($columns as $colName => $column) {
+                if (!empty($column->references['table'])) {
+                    $refs = $this->generateToOneReference($refs, $tableName, $colName, $tables[$column->references['table']]['Logic']->className, $column, $writers);
+                    $refs = $this->generateToManyReference($refs, $tableName, $column, $writers);
+                }
+            }
+        }
+        return $refs;
+    }
+
+    private function generateToOneReference(array $refs, string $tableName, string $colName, $refTable, ColumnSchema $column, array $writers): array
+    {
+        // Many-to-One relationship
+        $refs[$tableName]['one'][$colName] = [
+            'localProperty' => $colName,
+            'class' => $writers['Logic']->getFullNamespace() . '\\' . NamingStyle::toCamelCase($refTable, true),
+            'property' => NamingStyle::toCamelCase($column->references['column'], true)
+        ];
+        return $refs;
+    }
+
+    private function generateToManyReference(array $refs, string $tableName, ColumnSchema $column, array $writers): array
+    {
+        // One-to-Many relationship
+        $refs[$column->references['table']]['many'][$column->references['column']] = [
+            'class' => $writers['Logic']->getFullNamespace() . '\\' . $writers['Logic']->className,
+            'property' => NamingStyle::toCamelCase($column->name, true)
+        ];
+        return $refs;
+    }
+
+    private function printTableGenerationMessage(string $tableName, int $longest): void
+    {
+        $this->term->inline($this->term->getIndentStr() . sprintf("Table %s %s", $tableName, str_repeat(' ', ($longest + 4 - strlen($tableName)))));
+    }
+
+    private function generateBaseModel(Base $baseModel): void
+    {
+        $baseModel->write();
+    }
+
+    private function generateLogicModel(Logic $logicModel): void
+    {
+        $logicModel->write();
+    }
+
+    private function printExecutionTime(float $tStart): void
+    {
+        $tEnd = microtime(as_float: true);
+        $this->term->decreaseIndent();
+        $this->term->out('');
+        $this->term->out('Time taken: ' . number_format((float)($tEnd - $tStart), 4, '.', '') . ' seconds');
+        $this->term->out('');
+    }
+
+    private function handleException(Exception $e): void
+    {
+        $this->term->resetIndent();
+        $this->term->out('');
+        $this->term->red()->error($e->getMessage());
+        $this->term->error($e->getTraceAsString());
+        exit(1);
     }
 
     private function prepareDirs(): void
     {
         $modelsSuperDir = $this->connectionConfig->getModelsPath();
         if (empty($modelsSuperDir)) {
-            throw new RuntimeException('path_models is empty');
+            throw new InvalidArgumentException('Configuration parameter path_models is empty.');
         }
         $baseModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Base';
         $finalModelsDir = $modelsSuperDir . DIRECTORY_SEPARATOR . 'Logic';
@@ -203,7 +282,7 @@ class ModelsGenerator
 
     private function wipeBaseModels(string $dirName): void
     {
-        $dir = new \FilesystemIterator($dirName);
+        $dir = new FilesystemIterator($dirName);
         foreach ($dir as $item) {
             if ($item->isDir()) {
                 $this->wipeBaseModels($item->getRealPath());

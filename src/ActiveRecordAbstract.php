@@ -11,6 +11,7 @@ use PDO;
 use PDOStatement;
 use RuntimeException;
 use Sanovskiy\SimpleObject\Collections\QueryResult;
+use Sanovskiy\SimpleObject\Query\Filter;
 use Sanovskiy\SimpleObject\Relations\HasOne;
 use Sanovskiy\SimpleObject\Relations\HasMany;
 
@@ -41,7 +42,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     private ?array $loadedValues = null;
 
     /**
-     * id as __construct param is removed in version 7
+     * id as __construct param was removed in version 7
      */
     public function __construct()
     {
@@ -203,10 +204,13 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             if (!static::isTableFieldExist($tableFieldName)) {
                 continue;
             }
-            // TODO: Apply value transformations
+            if ($applyTransforms && !empty(self::$dataTransformRules[$tableFieldName]['transformerClass']) && class_exists((self::$dataTransformRules[$tableFieldName]['transformerClass']))) {
+                $value = call_user_func([self::$dataTransformRules[$tableFieldName]['transformerClass'], 'toProperty'], [$value, (self::$dataTransformRules[$tableFieldName]['transformerParams'] ?? null)]);
+            }
             $this->values[$tableFieldName] = $value;
         }
     }
+
 
     /**
      * @param string|PDOStatement $source
@@ -236,9 +240,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             }
             $entity = new static();
             $entity->populate($row);
-            $data[]=$entity;
+            $data[] = $entity;
         }
-        return new QueryResult($data,[],$sql,$source);
+        return new QueryResult($data, [], $sql, $source);
     }
 
     public static function one(array $conditions): ?static
@@ -248,8 +252,17 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     public static function find(array $conditions): QueryResult
     {
-        // TODO: Add filtering logic
-        return new QueryResult([]);
+        $query = new Filter(static::class, $conditions);
+        $stmt = self::getReadConnection()->prepare($query->getSQL());
+        $stmt->execute($query->getBind());
+
+        $data = array_map(function(array $row){
+            $record = new static();
+            $record->populate($row);
+            return $record;
+        },$stmt->fetchAll(PDO::FETCH_ASSOC));
+
+        return new QueryResult($data,$query,$stmt);
     }
 
     public static function getCount(array $conditions): int
@@ -336,8 +349,8 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     {
         $relatedModelClass = $relationship->getRelatedModel();
         /** @var ActiveRecordAbstract $relatedModelClass */
-        if ($this->{$relationship->getLocalKey()}){
-            return $relatedModelClass::one([$relationship->getForeignKey()=>$this->{$relationship->getLocalKey()}]);
+        if ($this->{$relationship->getLocalKey()}) {
+            return $relatedModelClass::one([$relationship->getForeignKey() => $this->{$relationship->getLocalKey()}]);
         }
         return null;
     }
