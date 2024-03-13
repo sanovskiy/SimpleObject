@@ -4,12 +4,12 @@ namespace Sanovskiy\SimpleObject\DataTransformers;
 
 interface DataTransformerInterface
 {
-    public function toProperty($value, $format = null);
+    public static function toProperty($value, $format = null);
 
-    public function toDatabaseValue($value, $format = null);
+    public static function toDatabaseValue($value, $format = null);
 
-    public function isValidDatabaseData($value);
+    public static function isValidDatabaseData($value);
 
-    public function isValidPropertyData($value);
+    public static function isValidPropertyData($value);
 
 }

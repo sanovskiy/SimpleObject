@@ -6,11 +6,14 @@ use InvalidArgumentException;
 
 abstract class DataTransformerAbstract implements DataTransformerInterface
 {
-    public function __construct(protected string $databaseDriver)
+    protected static ?string $databaseDriver=null;
+
+    public static function setDatabaseDriver(string $driver)
     {
-        if (!in_array($this->databaseDriver,['mysql','pgsql','mssql'])){
+        if (!in_array($driver,['mysql','pgsql','mssql'])){
             throw new InvalidArgumentException('Unsupported database driver');
         }
+        static::$databaseDriver = $driver;
     }
 
 

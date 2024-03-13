@@ -2,39 +2,45 @@
 
 namespace Sanovskiy\SimpleObject\DataTransformers;
 
+use InvalidArgumentException;
+
 class EnumTransformer extends DataTransformerAbstract
 {
+    protected static array $validValues = [];
 
-    public function __construct(string $databaseDriver, protected array $validValues)
+    /**
+     * @param array $validValues
+     */
+    public static function setValidValues(array $validValues): void
     {
-        parent::__construct($databaseDriver);
+        self::$validValues = $validValues;
     }
 
-    public function toProperty($value, $format = null)
+    public static function toProperty($value, $format = null)
     {
-        if (!$this->isValidDatabaseData($value)) {
-            throw new \InvalidArgumentException('Invalid data for ' . __METHOD__);
+        if (!static::isValidDatabaseData($value)) {
+            throw new InvalidArgumentException('Invalid data for ' . __METHOD__);
         }
 
         return $value;
     }
 
-    public function toDatabaseValue($value, $format = null)
+    public static function toDatabaseValue($value, $format = null)
     {
-        if (!$this->isValidPropertyData($value)) {
-            throw new \InvalidArgumentException('Invalid data for ' . __METHOD__);
+        if (!static::isValidPropertyData($value)) {
+            throw new InvalidArgumentException('Invalid data for ' . __METHOD__);
         }
 
         return $value;
     }
 
-    public function isValidDatabaseData($value): bool
+    public static function isValidDatabaseData($value): bool
     {
-        return in_array($value, $this->validValues);
+        return in_array($value, static::$validValues);
     }
 
-    public function isValidPropertyData($value): bool
+    public static function isValidPropertyData($value): bool
     {
-        return in_array($value, $this->validValues, true);
+        return in_array($value, static::$validValues, true);
     }
 }

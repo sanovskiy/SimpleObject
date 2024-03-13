@@ -6,7 +6,7 @@ use Nette\PhpGenerator\ClassType;
 use Sanovskiy\SimpleObject\ConnectionConfig;
 use Sanovskiy\SimpleObject\ModelsWriter\Schemas\TableSchema;
 
-abstract class AbstractWriter implements ModelWriterlInterface
+abstract class AbstractWriter implements ModelWriterInterface
 {
     protected string $modelType;
 
@@ -15,6 +15,7 @@ abstract class AbstractWriter implements ModelWriterlInterface
         public readonly TableSchema $tableSchema,
         public readonly string $className,
         public readonly string $directory,
+        public readonly string $subDirectory,
         public readonly string $classNamespace,
         public readonly string $classNamespaceAddon,
         public readonly string $classExtends
@@ -25,33 +26,39 @@ abstract class AbstractWriter implements ModelWriterlInterface
         return $this->classNamespace.'\\'.$this->modelType.$this->classNamespaceAddon;
     }
 
+    public function getFullDirectoryName(): string
+    {
+        return $this->directory.DIRECTORY_SEPARATOR.$this->modelType.(empty($this->subDirectory)?DIRECTORY_SEPARATOR:$this->subDirectory);
+    }
+
     public function dirExists(): bool
     {
-        return file_exists($this->directory);
+        return file_exists($this->getFullDirectoryName());
     }
 
     public function createDir(): bool
     {
         if(!$this->dirExists()){
-            return mkdir(directory: $this->directory, permissions: 0755, recursive: true);
+            return mkdir(directory: $this->getFullDirectoryName(), permissions: 0755, recursive: true);
         }
         return true;
     }
 
     public function fileExists(): bool
     {
-        return file_exists($this->directory.DIRECTORY_SEPARATOR.$this->className.'.php');
+        return file_exists($this->getFullDirectoryName().DIRECTORY_SEPARATOR.$this->className.'.php');
     }
 
-    protected function writeFile(string $contents)
+    protected function writeFile(string $contents): bool
     {
         $this->createDir();
-        $path = $this->directory.DIRECTORY_SEPARATOR.$this->className.'.php';
+        $path = $this->getFullDirectoryName().$this->className.'.php';
+        //echo 'W: '.$this->getFullNamespace().'\\'.$this->className.' => '.$path.PHP_EOL;
 
         if (!file_exists($path)) {
-            return file_put_contents(
+            return (bool) file_put_contents(
                 $path,
-                $this->getModelHeader().$contents
+                '<?php'.PHP_EOL.$this->getModelHeader().$contents
             );
         }
         return true;

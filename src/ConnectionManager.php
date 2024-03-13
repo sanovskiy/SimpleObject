@@ -33,8 +33,10 @@ class ConnectionManager
         if (isset(self::$connectionConfigs[$name])) {
             return false;
         }
-
         self::$connectionConfigs[$name] = $connection;
+        $loader = new \Composer\Autoload\ClassLoader();
+        $loader->addPsr4($connection->getModelsNamespace().'\\', $connection->getModelsPath());
+        $loader->register();
         return true;
     }
 

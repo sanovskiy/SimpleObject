@@ -4,15 +4,16 @@ namespace Sanovskiy\SimpleObject\DataTransformers;
 
 use InvalidArgumentException;
 
-class JsonTransformer extends DataTransformerAbstract
+class FloatTransformer extends DataTransformerAbstract
 {
 
-    public static function toProperty($value, $format = true)
+    public static function toProperty($value, $format = null): float
     {
         if (!self::isValidDatabaseData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
         }
-        return json_decode($value, $format);
+
+        return (float) $value;
     }
 
     public static function toDatabaseValue($value, $format = null): string
@@ -20,16 +21,16 @@ class JsonTransformer extends DataTransformerAbstract
         if (!self::isValidPropertyData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
         }
-        return (string)json_encode($value);
+        return (string) $value;
     }
 
     public static function isValidDatabaseData($value): bool
     {
-        return json_decode($value) !== null && json_last_error() === JSON_ERROR_NONE;
+        return is_numeric($value);
     }
 
     public static function isValidPropertyData($value): bool
     {
-        return true;
+        return is_float($value);
     }
 }

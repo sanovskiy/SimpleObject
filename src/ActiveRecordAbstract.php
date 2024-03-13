@@ -11,8 +11,12 @@ use PDO;
 use PDOStatement;
 use RuntimeException;
 use Sanovskiy\SimpleObject\Collections\QueryResult;
-use Sanovskiy\Utility\NamingStyle;
+use Sanovskiy\SimpleObject\Relations\HasOne;
+use Sanovskiy\SimpleObject\Relations\HasMany;
 
+/**
+ * @property int $Id Identity
+ */
 class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 {
     const RELATION_SUFFIX = 'Relation';
@@ -117,6 +121,30 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
         return static::$propertiesMapping[$tableFieldName];
     }
+
+    /**
+     * Defines a "one-to-many" relationship
+     * @param string $relatedModelClass The class of the related model
+     * @param string $foreignKey The foreign key in the related model
+     * @param string $localKey The local key in the current model
+     * @return HasMany
+     */
+    public function hasMany(string $relatedModelClass, string $foreignKey, string $localKey): HasMany
+    {
+        return new HasMany($relatedModelClass, $foreignKey, $localKey, $this->Id);
+    }
+
+    /**
+     * Defines a "one-to-many" relationship
+     * @param string $relatedModelClass The class of the related model
+     * @param string $localKey The local key in the current model
+     * @return HasOne
+     */
+    public function hasOne(string $relatedModelClass, string $localKey): HasOne
+    {
+        return new HasOne($relatedModelClass, 'Id', $localKey, $this->$localKey);
+    }
+
 
     public function isExistInStorage(): bool
     {
@@ -292,10 +320,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             return $this->values[$name];
         }
 
-        if ($relationship = $this->getRelationship($name)) {
-            return $this->getRelatedModel($relationship);
-        }
-
         return match ($name) {
             'ReadConnection' => ConnectionManager::getConnection(static::$SimpleObjectConfigNameRead),
             'WriteConnection' => ConnectionManager::getConnection(static::$SimpleObjectConfigNameWrite),
@@ -314,35 +338,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         /** @var ActiveRecordAbstract $relatedModelClass */
         if ($this->{$relationship->getLocalKey()}){
             return $relatedModelClass::one([$relationship->getForeignKey()=>$this->{$relationship->getLocalKey()}]);
-        }
-        return null;
-    }
-
-    private static array $relationObjects = [];
-
-    public final static function relationships(): array
-    {
-        if (!empty(static::$tableRelations)){
-            if (empty(self::$relationObjects[static::class])){
-                foreach (static::$tableRelations as $tableName => $relData){
-                    $namespace = implode('\\', array_slice(explode('\\', static::class), 0, -1));
-                    $relatedModel = $namespace.'\\'.NamingStyle::toCamelCase($tableName,true);
-                    self::$relationObjects[static::class][] = new Relation($relData[0],$relData[1],$relatedModel);
-                }
-            }
-            return self::$relationObjects[static::class];
-        }
-        return [];
-    }
-
-    protected function getRelationship(string $name): ?Relation
-    {
-        $relationships = static::relationships();
-        /** @var Relation $relationship */
-        foreach ($relationships as $relationship) {
-            if ($relationship->getRelatedModelName(). self::RELATION_SUFFIX === $name ) {
-                return $relationship;
-            }
         }
         return null;
     }

@@ -7,25 +7,32 @@ use Nette\PhpGenerator\PhpNamespace;
 
 class Logic extends AbstractWriter
 {
-    protected string  $modelType='Logic';
+    protected string $modelType = 'Logic';
 
     public function write()
     {
+        $baseClassName = sprintf(
+            '%s\\Base%s\\%s',
+            $this->classNamespace,
+            $this->classNamespaceAddon,
+            $this->className
+        );
+
         $model = new ClassType($this->className);
-        $model->setExtends($this->classExtends)
+        $namespace = new PhpNamespace($this->getFullNamespace());
+        $namespace->addUse($baseClassName, 'Base_' . $this->className);
+        $namespace->add($model);
+        $model->setExtends($baseClassName)
             ->setComment(
                 sprintf("Logic Model class for table %s", $this->tableSchema->tableName)
             );
 
-        $namespace = new PhpNamespace($this->getFullNamespace());
-        $namespace->addUse(
-            $this->classNamespace.'\\Base'.$this->classNamespaceAddon,
-            'Base_'.$this->className
-        );
-        $namespace->add($model);
-
-        echo $namespace.PHP_EOL;
+        $this->writeFile((string)$namespace);
 
     }
 
+    public function setReferences(array $references)
+    {
+        return;
+    }
 }
