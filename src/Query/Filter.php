@@ -10,6 +10,7 @@ class Filter
 {
     protected ?string $sql = null;
     protected ?array $bind = null;
+    private ?array $tableFields=null;
 
 
     public function __construct(protected ActiveRecordAbstract|string $modelClass, protected array $filters)
@@ -36,7 +37,12 @@ class Filter
 
     public function getSQL(): string
     {
-        return $this->sql;
+        return str_replace('{%fields}','`'.implode('`, `', $this->tableFields).'`',$this->sql);
+    }
+
+    public function getCountSQL(): string
+    {
+        return str_replace('{%fields}','count(*)',$this->sql);
     }
 
     public function getBind(): array
@@ -46,10 +52,11 @@ class Filter
 
     private function buildQuery(): void
     {
-        $tableName = call_user_func([$this->modelClass, 'getTableName']);
-        $tableFields = call_user_func([$this->modelClass, 'getTableFields']);
+        $tableName = $this->modelClass::getTableName();
+        $this->tableFields = $this->modelClass::getTableFields();
 
-        $this->sql = 'SELECT `' . (implode('`, `', $tableFields)) . '` FROM `' . $tableName . '` WHERE ';
+
+        $this->sql = 'SELECT {%fields} FROM `' . $tableName . '` WHERE ';
         $result = self::buildFilters($this->filters);
         $this->bind = $result['bind'];
         $this->sql .= $result['sql'];
@@ -94,9 +101,6 @@ class Filter
 
     protected function detectFilterType($key, $value): int
     {
-        var_dump([
-            $key, $value, !is_numeric($key), is_scalar($value),$this->modelClass::isTableFieldExist($key)
-        ]);
         return match (true) {
             ($value instanceof QueryExpression) => self::FILTER_TYPE_EXPRESSION,
             (!is_numeric($key) && is_scalar($value) && $this->modelClass::isTableFieldExist($key)) => self::FILTER_TYPE_SCALAR,

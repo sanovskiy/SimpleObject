@@ -8,10 +8,10 @@ use Sanovskiy\SimpleObject\Query\Filter;
 
 class QueryResult extends ImmutableCollection
 {
-    protected Filter $filters;
+    protected ?Filter $filters;
     protected ?PDOStatement $pdoStatement;
 
-    public function __construct(array $data, Filter $filters, PDOStatement $pdoStatement=null, ?string $forceClass = null)
+    public function __construct(array $data, Filter $filters=null, PDOStatement $pdoStatement=null, ?string $forceClass = null)
     {
         parent::__construct($data);
         $this->filters = $filters;

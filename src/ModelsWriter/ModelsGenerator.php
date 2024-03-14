@@ -6,6 +6,7 @@ use Exception;
 use FilesystemIterator;
 use InvalidArgumentException;
 use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\NoReturn;
 use League\CLImate\CLImate;
 use RuntimeException;
 use Sanovskiy\SimpleObject\ConnectionConfig;
@@ -82,7 +83,6 @@ class ModelsGenerator
         } catch (Exception $e) {
             $this->handleException($e);
         }
-        return false;
     }
 
     private function printStartMessage(): void
@@ -243,7 +243,7 @@ class ModelsGenerator
         $this->term->out('');
     }
 
-    private function handleException(Exception $e): void
+    #[NoReturn] private function handleException(Exception $e): void
     {
         $this->term->resetIndent();
         $this->term->out('');

@@ -42,7 +42,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     private ?array $loadedValues = null;
 
     /**
-     * id as __construct param was removed in version 7
+     * int $id as __construct param was removed in version 7
      */
     public function __construct()
     {
@@ -213,28 +213,28 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
 
     /**
-     * @param string|PDOStatement $source
+     * @param string|PDOStatement $statement
      * @param array $bind
      *
      * @return QueryResult
      * @throws Exception
      */
-    public static function factory(PDOStatement|string $source, array $bind = []): QueryResult
+    public static function factory(PDOStatement|string $statement, array $bind = []): QueryResult
     {
-        if (!is_string($source) && !($source instanceof PDOStatement)) {
-            throw new RuntimeException('Unknown type ' . gettype($source) . '. Expected string or PDOStatement');
+        if (!is_string($statement) && !($statement instanceof PDOStatement)) {
+            throw new RuntimeException('Unknown type ' . gettype($statement) . '. Expected string or PDOStatement');
         }
         $sql = null;
-        if (is_string($source)) {
-            $sql = $source;
-            $source = ConnectionManager::getConnection(static::$SimpleObjectConfigNameRead)->prepare($sql);
+        if (is_string($statement)) {
+            $sql = $statement;
+            $statement = ConnectionManager::getConnection(static::$SimpleObjectConfigNameRead)->prepare($sql);
         }
 
-        $source->execute($bind);
+        $statement->execute($bind);
 
         $data = [];
 
-        while ($row = $source->fetch(PDO::FETCH_ASSOC)) {
+        while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
             if (count($missingFields = array_diff(array_keys($row), static::getTableFields())) > 0) {
                 throw new RuntimeException('Missing fields ' . implode(', ', $missingFields));
             }
@@ -242,7 +242,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             $entity->populate($row);
             $data[] = $entity;
         }
-        return new QueryResult($data, [], $sql, $source);
+        return new QueryResult($data, null, $statement);
     }
 
     public static function one(array $conditions): ?static
@@ -256,21 +256,22 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $stmt = self::getReadConnection()->prepare($query->getSQL());
         $stmt->execute($query->getBind());
 
-        $data = array_map(function(array $row){
+        $data = array_map(function (array $row) {
             $record = new static();
             $record->populate($row);
             return $record;
-        },$stmt->fetchAll(PDO::FETCH_ASSOC));
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
-        return new QueryResult($data,$query,$stmt);
+        return new QueryResult($data, $query, $stmt);
     }
 
     public static function getCount(array $conditions): int
     {
-        // TODO: Add filtering logic and count result rows
-        return (int)0;
+        $query = new Filter(static::class, $conditions);
+        $stmt = self::getReadConnection()->prepare($query->getCountSQL());
+        $stmt->execute($query->getBind());
+        return (int)$stmt->fetchColumn(0);
     }
-
 
     public function __isset($name): bool
     {
@@ -284,10 +285,113 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return true;
     }
 
+    public function getDataForSave(bool $applyTransforms = true): ?array
+    {
+        $data = [];
+        foreach (array_keys(static::$propertiesMapping) as $tableFieldName) {
+            $value = null;
+            if (isset($this->values[$tableFieldName])) {
+                $value = $this->values[$tableFieldName];
+            }
+
+            if ($applyTransforms && $value !== null && isset(static::$dataTransformRules[$tableFieldName])) {
+                $transformerClass = static::$dataTransformRules[$tableFieldName]['transformerClass'] ?? null;
+                $transformerParams = static::$dataTransformRules[$tableFieldName]['transformerParams'] ?? null;
+                if ($transformerClass && class_exists($transformerClass)) {
+                    $value = $transformerClass::toDatabaseValue($value, $transformerParams);
+                }
+            }
+
+            // Make sure null values are not added to the data array
+            if ($value !== null) {
+                $data[$tableFieldName] = $value;
+            }
+        }
+        return $data;
+    }
+
+    public function hasChanges(): bool
+    {
+        // Get the data for saving in the format it will be stored in the database
+        $dataForSave = $this->getDataForSave();
+
+        // If there is no data for saving, consider there are no changes
+        if (empty($dataForSave)) {
+            return false;
+        }
+
+        // Check if there are differing fields between the current values and the data for saving
+        $differingFields = array_diff_assoc($dataForSave, $this->loadedValues);
+
+        // If there are differing fields, there are changes
+        return !empty($differingFields);
+    }
+
     public function save(bool $force = false): bool
     {
-        // TODO: Add save logic
-        return true;
+        try {
+            // Get data for saving
+            $data = $this->getDataForSave();
+
+            // If there is no data to save, return false
+            if (empty($data)) {
+                return false;
+            }
+
+            // Check if updating record in the database is needed
+            if ($this->isExistInStorage()) {
+                // Check if there are differing fields between current values and loaded values
+                if (!$force && !$this->hasChanges()) {
+                    // No differing fields, so just return true without updating
+                    return true;
+                }
+
+                // Update existing record
+                $fields = array_keys($data);
+                $updateFields = array_map(fn($field) => "$field = ?", $fields);
+                $values = array_values($data);
+                $values[] = $this->{$this->getIdProperty()};
+                $sql = sprintf(
+                    "UPDATE %s SET %s WHERE %s = ?",
+                    static::getTableName(),
+                    implode(', ', $updateFields),
+                    $this->getIdField()
+                );
+            } else {
+                // Insert new record
+                $fields = array_keys($data);
+                $placeholders = array_fill(0, count($fields), '?');
+                $values = array_values($data);
+                $sql = sprintf(
+                    "INSERT INTO %s (%s) VALUES (%s)",
+                    static::getTableName(),
+                    implode(', ', $fields),
+                    implode(', ', $placeholders)
+                );
+            }
+
+            // Execute the query
+            $db = static::getWriteConnection();
+            $stmt = $db->prepare($sql);
+            if (!$stmt->execute($values)) {
+                throw new RuntimeException('Failed to save record: ' . $stmt->errorInfo()[2]);
+            }
+
+            // Update cache if a new record is created
+            if (!$this->isExistInStorage()) {
+                $id = $db->lastInsertId();
+                $this->{$this->getIdProperty()} = $id;
+                RuntimeCache::getInstance()->put(static::class, $id, $data);
+            } else {
+                // Update cache of loaded values
+                RuntimeCache::getInstance()->put(static::class, $this->{$this->getIdProperty()}, $data);
+            }
+
+            $this->loadedValues = $data;
+            return true;
+        } catch (Exception $e) {
+            throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
+        }
     }
 
     public function delete(): bool
@@ -297,14 +401,23 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
 
         try {
-            // TODO: add logic for delete
+            $sql = sprintf(
+                "DELETE FROM %s WHERE %s = ?",
+                static::getTableName(),
+                $this->getIdField()
+            );
+            $db = static::getWriteConnection();
+            $stmt = $db->prepare($sql);
+            if (!$stmt->execute([$this->{$this->getIdProperty()}])) {
+                throw new RuntimeException('Failed to delete record: ' . $stmt->errorInfo()[2]);
+            }
+
+            RuntimeCache::getInstance()->drop(static::class, $this->{$this->getIdField()});
+            $this->loadedValues = [];
+            return true;
         } catch (Exception $e) {
             throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
         }
-
-        RuntimeCache::getInstance()->drop(static::class, $this->{$this->getIdField()});
-        $this->loadedValues = [];
-        return true;
     }
 
     public function __set(string $name, mixed $value)
