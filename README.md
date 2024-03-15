@@ -448,6 +448,18 @@ $user1->load(true); // Force load from the database
 - Caching with runtime cache in SimpleObject provides efficient cache management to enhance your application's performance.
 - Applying caching is recommended for data operations that are frequently performed and can be cached for reuse.
 
+## Contributing
+
+We welcome contributions to SimpleObject! If you find any issues or have suggestions for improvements, please feel free to open an issue or submit a pull
+request on GitHub.
+
+## Thanks
+
+Special thanks to ChatGPT for help with routine tasks.
+
+## License
+
+SimpleObject is distributed under the MIT License with Custom Conditions. See the LICENSE file for more information.
 
 ## Directory structure
 
@@ -494,22 +506,5 @@ Directory structure:
 │  └─ RuntimeCache.php                       [Class for runtime caching]
 ├─ .gitignore                                [Git ignore file]
 ├─ README.md                                 [*This file*]
-├─ composer.json                             [Composer configuration file]
-└─ composer.lock                             [Composer lock file]
+└─ composer.json                             [Composer configuration file]
 ```
-
-## Contributing
-
-We welcome contributions to SimpleObject! If you find any issues or have suggestions for improvements, please feel free to open an issue or submit a pull
-request on GitHub.
-
-## Thanks
-
-Special thanks to ChatGPT for help with routine tasks.
-
-## License
-
-SimpleObject is distributed under the MIT License with Custom Conditions. See the LICENSE file for more information.
-
-
-
