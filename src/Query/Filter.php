@@ -5,12 +5,13 @@ namespace Sanovskiy\SimpleObject\Query;
 use InvalidArgumentException;
 use Project\Models\One\Base\Acl\Person;
 use Sanovskiy\SimpleObject\ActiveRecordAbstract;
+use Sanovskiy\SimpleObject\ConnectionManager;
 
 class Filter
 {
     protected ?string $sql = null;
     protected ?array $bind = null;
-    private ?array $tableFields=null;
+    private ?array $tableFields = null;
 
 
     public function __construct(protected ActiveRecordAbstract|string $modelClass, protected array $filters)
@@ -18,18 +19,19 @@ class Filter
         if (!is_subclass_of($modelClass, ActiveRecordAbstract::class)) {
             throw new InvalidArgumentException('Model class must be a subclass of ActiveRecordAbstract');
         }
-        if (is_object($this->modelClass)){
+        if (is_object($this->modelClass)) {
             $this->modelClass = get_class($this->modelClass);
         }
+
         $this->buildQuery();
     }
 
     protected function substituteColumnName(string $key): string
     {
-        if ($this->modelClass::isPropertyExist($key)){
+        if ($this->modelClass::isPropertyExist($key)) {
             return $key;
         }
-        if ($this->modelClass::isPropertyExist($key)){
+        if ($this->modelClass::isPropertyExist($key)) {
             return $this->modelClass::getPropertyField($key);
         }
         return $key;
@@ -37,12 +39,12 @@ class Filter
 
     public function getSQL(): string
     {
-        return str_replace('{%fields}','`'.implode('`, `', $this->tableFields).'`',$this->sql);
+        return str_replace('{%fields}', '`' . implode('`, `', $this->tableFields) . '`', $this->sql);
     }
 
     public function getCountSQL(): string
     {
-        return str_replace('{%fields}','count(*)',$this->sql);
+        return str_replace('{%fields}', 'count(*)', $this->sql);
     }
 
     public function getBind(): array
@@ -50,17 +52,68 @@ class Filter
         return $this->bind;
     }
 
+    private function getPlaceholdersForCurrentDriver(): ?array
+    {
+        return [
+            'mysql' => ['placeholder' => '?', 'offsetPlaceholder' => 'OFFSET ?', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '`', 'right' => '`']],
+            'pgsql' => ['placeholder' => '$', 'offsetPlaceholder' => 'OFFSET ?', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '"', 'right' => '"']],
+            'mssql' => ['placeholder' => '?', 'offsetPlaceholder' => 'OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '[', 'right' => ']']],
+        ][ConnectionManager::getConfig($this->modelClass::getSimpleObjectConfigNameRead())?->getDriver()] ?: null;
+
+    }
+
     private function buildQuery(): void
     {
         $tableName = $this->modelClass::getTableName();
         $this->tableFields = $this->modelClass::getTableFields();
 
+        // Determine SQL syntax based on the database driver
+        $config = $this->getPlaceholdersForCurrentDriver();
+        if (empty($config)) {
+            throw new \RuntimeException('Unsupported database driver');
+        }
+        $placeholder = $config['placeholder'];
+        $offsetPlaceholder = $config['offsetPlaceholder'];
+        $groupBy = $config['groupBy'];
 
-        $this->sql = 'SELECT {%fields} FROM `' . $tableName . '` WHERE ';
+        // Build SELECT statement
+        $this->sql = 'SELECT {%fields} FROM ' . $tableName;
+
+        // Add WHERE clause
+        $this->sql .= ' WHERE ';
         $result = self::buildFilters($this->filters);
+
         $this->bind = $result['bind'];
         $this->sql .= $result['sql'];
 
+        // Add additional instructions
+        $instructions = [':ORDER', ':LIMIT', ':GROUP'];
+        foreach ($instructions as $instruction) {
+            if (isset($this->filters[$instruction])) {
+                switch ($instruction) {
+                    case ':ORDER':
+                        $this->sql .= ' ORDER BY ' . $this->filters[$instruction][0] . ' ' . strtoupper($this->filters[$instruction][1]);
+                        break;
+                    case ':LIMIT':
+                        $this->sql .= ' LIMIT ' . $placeholder;
+                        $this->bind[] = $this->filters[$instruction][0];
+                        if (count($this->filters[$instruction]) === 2) {
+                            $this->sql .= ' ' . $offsetPlaceholder;
+                            $this->bind[] = $this->filters[$instruction][1];
+                        }
+                        break;
+                    case ':GROUP':
+                        $this->sql .= ' ' . $groupBy . ' ' . $this->filters[$instruction][0];
+                        break;
+                }
+            }
+        }
+
+        // Replace {%fields} with appropriate syntax for the database
+        $fields = array_map(function ($field) use ($config) {
+            return $config['columnDelimiters']['left'] . $field . $config['columnDelimiters']['right'];
+        }, $this->tableFields);
+        $this->sql = str_replace('{%fields}', implode(', ', $fields), $this->sql);
     }
 
     protected function isMixedKeysArray($arr): bool
@@ -85,6 +138,7 @@ class Filter
     const FILTER_TYPE_COMPARE_LONG = 0b100; // key is numeric and there are three elements in value, and first one is table column name or SQL expression and second is comparison operator
     const FILTER_TYPE_SUB_FILTER = 0b1000; // key is numeric or ':AND' or ':OR'
     const FILTER_TYPE_EXPRESSION = 0b10000; // value is instance of QueryExpression
+    const FILTER_TYPE_QUERY_RULE = 0b100000; // value is :ORDER, :LIMIT или :GROUP
 
     public function getFilterTypeName($type): string
     {
@@ -95,6 +149,7 @@ class Filter
             self::FILTER_TYPE_COMPARE_LONG => 'CompareLong',
             self::FILTER_TYPE_SUB_FILTER => 'SubFilter',
             self::FILTER_TYPE_EXPRESSION => 'Expression',
+            self::FILTER_TYPE_QUERY_RULE => 'Query rule',
         ];
         return array_key_exists($type, $types) ? $types[$type] : 'ERROR: Unsupported type';
     }
@@ -102,10 +157,11 @@ class Filter
     protected function detectFilterType($key, $value): int
     {
         return match (true) {
+            (in_array(strtolower($key), [':order', ':limit', ':group'])) => self::FILTER_TYPE_QUERY_RULE,
             ($value instanceof QueryExpression) => self::FILTER_TYPE_EXPRESSION,
             (!is_numeric($key) && is_scalar($value) && $this->modelClass::isTableFieldExist($key)) => self::FILTER_TYPE_SCALAR,
             (is_numeric($key) && !$this->isMixedKeysArray($value) && is_array($value) && count($value) === 3 && is_string($value[0]) && is_string($value[1])) => self::FILTER_TYPE_COMPARE_LONG,
-            (!is_numeric($key) && !in_array($key,[':AND',':OR']) && is_array($value) && !$this->isMixedKeysArray($value) && count($value) === 2) => self::FILTER_TYPE_COMPARE_SHORT,
+            (!is_numeric($key) && !in_array($key, [':AND', ':OR']) && is_array($value) && !$this->isMixedKeysArray($value) && count($value) === 2) => self::FILTER_TYPE_COMPARE_SHORT,
             ($key === ':AND' || $key === ':OR'), (is_numeric($key) && is_array($value) && !$this->isMixedKeysArray($value)) => self::FILTER_TYPE_SUB_FILTER,
             default => self::FILTER_TYPE_UNKNOWN
         };
@@ -121,6 +177,9 @@ class Filter
             $filterType = $this->detectFilterType($key, $value);
 
             switch ($filterType) {
+                case self::FILTER_TYPE_QUERY_RULE:
+                    // Ignore this. It will be used later in buildQuery().
+                    break;
                 case self::FILTER_TYPE_SUB_FILTER:
                     // Handle AND/OR group
                     $groupType = substr($key, 1);

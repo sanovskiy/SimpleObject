@@ -14,6 +14,7 @@ use Sanovskiy\SimpleObject\Collections\QueryResult;
 use Sanovskiy\SimpleObject\Query\Filter;
 use Sanovskiy\SimpleObject\Relations\HasOne;
 use Sanovskiy\SimpleObject\Relations\HasMany;
+use Sanovskiy\Utility\NamingStyle;
 
 /**
  * @property int $Id Identity
@@ -61,6 +62,38 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     {
         // This method called in __construct() and can be overloaded in children
         return true;
+    }
+
+    /**
+     * @return string
+     */
+    public static function getSimpleObjectConfigNameRead(): string
+    {
+        return static::$SimpleObjectConfigNameRead;
+    }
+
+    /**
+     * @return string
+     */
+    public static function getSimpleObjectConfigNameWrite(): string
+    {
+        return static::$SimpleObjectConfigNameWrite;
+    }
+
+    /**
+     * @return array
+     */
+    public function getRawValues(): array
+    {
+        return $this->values;
+    }
+
+    /**
+     * @return array|null
+     */
+    public function getLoadedValues(): ?array
+    {
+        return $this->loadedValues;
     }
 
     public static function getReadConnection(): PDO
@@ -188,6 +221,20 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return true;
     }
 
+    private function getTransformerForField(string $tableFieldName)
+    {
+        if (!static::isTableFieldExist($tableFieldName)) {
+            throw new \InvalidArgumentException('Column ' . $tableFieldName . ' does not exist in table ' . static::getTableName());
+        }
+        if (empty(static::$dataTransformRules[$tableFieldName]['transformerClass'])) {
+            return null;
+        }
+        if (!class_exists((static::$dataTransformRules[$tableFieldName]['transformerClass']))) {
+            return null;
+        }
+        return static::$dataTransformRules[$tableFieldName];
+    }
+
     /**
      * Fills model with supplied array data
      *
@@ -204,10 +251,18 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             if (!static::isTableFieldExist($tableFieldName)) {
                 continue;
             }
-            if ($applyTransforms && !empty(self::$dataTransformRules[$tableFieldName]['transformerClass']) && class_exists((self::$dataTransformRules[$tableFieldName]['transformerClass']))) {
-                $value = call_user_func([self::$dataTransformRules[$tableFieldName]['transformerClass'], 'toProperty'], [$value, (self::$dataTransformRules[$tableFieldName]['transformerParams'] ?? null)]);
+
+            $_transformer = $this->getTransformerForField($tableFieldName);
+
+            if ($applyTransforms && !empty($_transformer)) {
+                $value = $_transformer['transformerClass']::toProperty($value, $_transformer['transformerParams'] ?? null);
             }
-            $this->values[$tableFieldName] = $value;
+
+            if (!empty($_transformer) && !$_transformer['transformerClass']::isValidPropertyData($value,$_transformer['transformerParams']??null)){
+                throw new \InvalidArgumentException('Bad data ('.$value.') for property '.NamingStyle::toCamelCase($tableFieldName,true));
+            }
+            $propertyName = static::getFieldProperty($tableFieldName);
+            $this->$propertyName = $value;
         }
     }
 
@@ -294,12 +349,9 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $value = $this->values[$tableFieldName];
             }
 
-            if ($applyTransforms && $value !== null && isset(static::$dataTransformRules[$tableFieldName])) {
-                $transformerClass = static::$dataTransformRules[$tableFieldName]['transformerClass'] ?? null;
-                $transformerParams = static::$dataTransformRules[$tableFieldName]['transformerParams'] ?? null;
-                if ($transformerClass && class_exists($transformerClass)) {
-                    $value = $transformerClass::toDatabaseValue($value, $transformerParams);
-                }
+            $transformer = $this->getTransformerForField($tableFieldName);
+            if ($applyTransforms && $value !== null && !empty($transformer)) {
+                $value = $transformer['transformerClass']::toDatabaseValue($value, $transformer['transformerParams']??null);
             }
 
             // Make sure null values are not added to the data array
@@ -321,8 +373,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
 
         // Check if there are differing fields between the current values and the data for saving
-        $differingFields = array_diff_assoc($dataForSave, $this->loadedValues);
-
+                $differingFields = array_diff_assoc($dataForSave, $this->loadedValues);
         // If there are differing fields, there are changes
         return !empty($differingFields);
     }
@@ -386,7 +437,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 // Update cache of loaded values
                 RuntimeCache::getInstance()->put(static::class, $this->{$this->getIdProperty()}, $data);
             }
-
+            
             $this->loadedValues = $data;
             return true;
         } catch (Exception $e) {
@@ -422,23 +473,47 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     public function __set(string $name, mixed $value)
     {
-        if (static::isPropertyExist($name)) {
-            $this->values[static::getPropertyField($name)] = $value;
-            return;
-        }
-        if (static::isTableFieldExist($name)) {
-            $this->values[$name] = $value;
+        if (static::isPropertyExist($name) || static::isTableFieldExist($name)) {
+            $propertyName = static::isPropertyExist($name) ? $name : null;
+            $fieldName = static::isTableFieldExist($name) ? $name : null;
+            $propertyName = $propertyName ?? static::getFieldProperty($fieldName);
+            $fieldName = $fieldName ?? static::getPropertyField($propertyName);
+
+            $_transformer = $this->getTransformerForField($fieldName);
+            if (!empty($_transformer))
+            {
+                if (
+                    !$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams']??null) &&
+                    $_transformer['transformerClass']::isValidDatabaseData($value, $_transformer['transformerParams']??null)
+                ) {
+                    $value = $_transformer['transformerClass']::toProperty($value);
+                }
+                if(!$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams']??null)) {
+                    if ($fieldName!=='id' || (!is_numeric($value) && !is_null($value))){
+                        throw new \InvalidArgumentException('Bad data for property ' . $name. ' '.get_class($value));
+                    }
+                }
+            }
+            $this->values[$propertyName] = $value;
         }
     }
 
     public function __get(string $name): mixed
     {
-        if (static::isPropertyExist($name)) {
-            if (!array_key_exists(static::getPropertyField($name), $this->values)) {
+        if (static::isPropertyExist($name) || static::isTableFieldExist($name)) {
+            $propertyName = static::isPropertyExist($name) ? $name : null;
+            $fieldName = static::isTableFieldExist($name) ? $name : null;
+            $propertyName = $propertyName ?? static::getFieldProperty($fieldName);
+            $fieldName = $fieldName ?? static::getPropertyField($propertyName);
+
+            if (!array_key_exists($fieldName, $this->values)) {
                 return null;
             }
-            return $this->values[static::getPropertyField($name)];
+            return $this->values[$fieldName];
+
+
         }
+
         if (static::isTableFieldExist($name)) {
             if (!array_key_exists($name, $this->values)) {
                 return null;

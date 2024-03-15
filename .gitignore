@@ -1,6 +1,8 @@
+.git
 .idea
 /demo
 /vendor
 /models*/
 composer.lock
 !.gitkeep
+draw_structure.php

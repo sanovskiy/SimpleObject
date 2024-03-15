@@ -28,7 +28,6 @@
     "league/climate": "^3.8"
   },
   "suggest": {
-    "monolog/monolog": "Allows logging from SimpleObject core functions",
     "robmorgan/phinx": "Allows creating migrations"
   }
 }

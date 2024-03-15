@@ -28,11 +28,7 @@ class DateTimeTransformer extends DataTransformerAbstract
 
     public static function isValidDatabaseData($value): bool
     {
-        if (is_numeric($value)){
-            return true;
-        }
-
-        return is_numeric($value) || (is_string($value) && strtotime($value) !== false);
+        return (is_string($value) && strtotime($value) !== false);
     }
 
     public static function isValidPropertyData($value): bool
