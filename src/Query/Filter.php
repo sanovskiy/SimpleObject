@@ -79,12 +79,13 @@ class Filter
         // Build SELECT statement
         $this->sql = 'SELECT {%fields} FROM ' . $tableName;
 
-        // Add WHERE clause
-        $this->sql .= ' WHERE ';
         $result = self::buildFilters($this->filters);
 
         $this->bind = $result['bind'];
-        $this->sql .= $result['sql'];
+        if (!empty($result['bind'])){
+            $this->sql .= ' WHERE '. $result['sql'];
+        }
+
 
         // Add additional instructions
         $instructions = [':ORDER', ':LIMIT', ':GROUP'];

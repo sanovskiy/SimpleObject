@@ -6,14 +6,14 @@ use ArrayAccess;
 use Countable;
 use Error;
 use Exception;
+use InvalidArgumentException;
 use Iterator;
 use PDO;
 use PDOStatement;
 use RuntimeException;
 use Sanovskiy\SimpleObject\Collections\QueryResult;
+use Sanovskiy\SimpleObject\DataTransformers\DataTransformerInterface;
 use Sanovskiy\SimpleObject\Query\Filter;
-use Sanovskiy\SimpleObject\Relations\HasOne;
-use Sanovskiy\SimpleObject\Relations\HasMany;
 use Sanovskiy\Utility\NamingStyle;
 
 /**
@@ -21,8 +21,6 @@ use Sanovskiy\Utility\NamingStyle;
  */
 class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 {
-    const RELATION_SUFFIX = 'Relation';
-
     protected static string $SimpleObjectConfigNameRead = 'default';
     protected static string $SimpleObjectConfigNameWrite = 'default';
 
@@ -33,11 +31,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     protected static array $propertiesMapping;
     protected static array $dataTransformRules;
-
-    /**
-     * @var array ['table_name'=>['local_field','remote_field'],'other_table_name'=>['other_local_field','other_remote_field'],...]
-     */
-    protected static array $tableRelations = [];
 
     private array $values = [];
     private ?array $loadedValues = null;
@@ -156,35 +149,12 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         return static::$propertiesMapping[$tableFieldName];
     }
 
-    /**
-     * Defines a "one-to-many" relationship
-     * @param string $relatedModelClass The class of the related model
-     * @param string $foreignKey The foreign key in the related model
-     * @param string $localKey The local key in the current model
-     * @return HasMany
-     */
-    public function hasMany(string $relatedModelClass, string $foreignKey, string $localKey): HasMany
-    {
-        return new HasMany($relatedModelClass, $foreignKey, $localKey, $this->Id);
-    }
-
-    /**
-     * Defines a "one-to-many" relationship
-     * @param string $relatedModelClass The class of the related model
-     * @param string $localKey The local key in the current model
-     * @return HasOne
-     */
-    public function hasOne(string $relatedModelClass, string $localKey): HasOne
-    {
-        return new HasOne($relatedModelClass, 'Id', $localKey, $this->$localKey);
-    }
-
-
     public function isExistInStorage(): bool
     {
         return !empty($this->loadedValues);
     }
 
+    private bool $skipPopulateCaching = false;
     /**
      * Loads model data from storage
      *
@@ -198,6 +168,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             return false;
         }
         if ($forceLoad || !($result = RuntimeCache::getInstance()->get(static::class, $this->{$this->getIdProperty()}))) {
+            $this->forceLoad = true;
             try {
                 $query = sprintf("SELECT * FROM %s WHERE %s = ?", static::getTableName(), $this->getIdField());
                 $db = static::getReadConnection();
@@ -210,29 +181,16 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                     $this->loadedValues = [];
                     return false;
                 }
-                $result = $statement->fetch(\PDO::FETCH_ASSOC);
-            } catch (\Exception $e) {
+                $result = $statement->fetch(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
                 throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
             }
 
             RuntimeCache::getInstance()->put(static::class, $this->{$this->getIdProperty()}, $result);
+            $this->skipPopulateCaching = true;
         }
         $this->populate($result);
         return true;
-    }
-
-    private function getTransformerForField(string $tableFieldName)
-    {
-        if (!static::isTableFieldExist($tableFieldName)) {
-            throw new \InvalidArgumentException('Column ' . $tableFieldName . ' does not exist in table ' . static::getTableName());
-        }
-        if (empty(static::$dataTransformRules[$tableFieldName]['transformerClass'])) {
-            return null;
-        }
-        if (!class_exists((static::$dataTransformRules[$tableFieldName]['transformerClass']))) {
-            return null;
-        }
-        return static::$dataTransformRules[$tableFieldName];
     }
 
     /**
@@ -244,9 +202,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public function populate(array $data, bool $applyTransforms = true, bool $isNewRecord = false)
     {
-        if (!$isNewRecord) {
-            $this->loadedValues = $data;
-        }
         foreach ($data as $tableFieldName => $value) {
             if (!static::isTableFieldExist($tableFieldName)) {
                 continue;
@@ -258,13 +213,48 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $value = $_transformer['transformerClass']::toProperty($value, $_transformer['transformerParams'] ?? null);
             }
 
-            if (!empty($_transformer) && !$_transformer['transformerClass']::isValidPropertyData($value,$_transformer['transformerParams']??null)){
-                throw new \InvalidArgumentException('Bad data ('.$value.') for property '.NamingStyle::toCamelCase($tableFieldName,true));
+            if (!empty($_transformer) && !$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams'] ?? null)) {
+                throw new InvalidArgumentException('Bad data (' . $value . ') for property ' . NamingStyle::toCamelCase($tableFieldName, true));
             }
+
             $propertyName = static::getFieldProperty($tableFieldName);
             $this->$propertyName = $value;
         }
+        if (!$isNewRecord) {
+            $this->loadedValues = $data;
+            if (!$this->skipPopulateCaching){
+                RuntimeCache::getInstance()->put(static::class, $this->{$this->getIdProperty()}, $data);
+                $this->skipPopulateCaching = false;
+            }
+        }
     }
+
+    private static function setDataTransformForField(string $columnName, array $transformRule): bool
+    {
+        if (!static::isTableFieldExist($columnName)) {
+            throw new InvalidArgumentException('Column ' . $columnName . ' does not exist in table ' . self::getTableName());
+        }
+        if (empty($transformRule['transformerClass']) || !class_exists($transformRule['transformerClass']) || !class_implements($transformRule['transformerClass'], DataTransformerInterface::class)) {
+            throw new InvalidArgumentException($transformRule['transformerClass'] . 'is not valid transformer');
+        }
+        static::$dataTransformRules[$columnName] = $transformRule;
+        return true;
+    }
+
+    private function getTransformerForField(string $tableFieldName)
+    {
+        if (!static::isTableFieldExist($tableFieldName)) {
+            throw new InvalidArgumentException('Column ' . $tableFieldName . ' does not exist in table ' . static::getTableName());
+        }
+        if (empty(static::$dataTransformRules[$tableFieldName]['transformerClass'])) {
+            return null;
+        }
+        if (!class_exists((static::$dataTransformRules[$tableFieldName]['transformerClass']))) {
+            return null;
+        }
+        return static::$dataTransformRules[$tableFieldName];
+    }
+
 
 
     /**
@@ -325,7 +315,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $query = new Filter(static::class, $conditions);
         $stmt = self::getReadConnection()->prepare($query->getCountSQL());
         $stmt->execute($query->getBind());
-        return (int)$stmt->fetchColumn(0);
+        return (int)$stmt->fetchColumn();
     }
 
     public function __isset($name): bool
@@ -351,7 +341,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
             $transformer = $this->getTransformerForField($tableFieldName);
             if ($applyTransforms && $value !== null && !empty($transformer)) {
-                $value = $transformer['transformerClass']::toDatabaseValue($value, $transformer['transformerParams']??null);
+                $value = $transformer['transformerClass']::toDatabaseValue($value, $transformer['transformerParams'] ?? null);
             }
 
             // Make sure null values are not added to the data array
@@ -373,7 +363,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         }
 
         // Check if there are differing fields between the current values and the data for saving
-                $differingFields = array_diff_assoc($dataForSave, $this->loadedValues);
+        $differingFields = array_diff_assoc($dataForSave, $this->loadedValues);
         // If there are differing fields, there are changes
         return !empty($differingFields);
     }
@@ -437,7 +427,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 // Update cache of loaded values
                 RuntimeCache::getInstance()->put(static::class, $this->{$this->getIdProperty()}, $data);
             }
-            
+
             $this->loadedValues = $data;
             return true;
         } catch (Exception $e) {
@@ -480,17 +470,16 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             $fieldName = $fieldName ?? static::getPropertyField($propertyName);
 
             $_transformer = $this->getTransformerForField($fieldName);
-            if (!empty($_transformer))
-            {
+            if (!empty($_transformer)) {
                 if (
-                    !$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams']??null) &&
-                    $_transformer['transformerClass']::isValidDatabaseData($value, $_transformer['transformerParams']??null)
+                    !$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams'] ?? null) &&
+                    $_transformer['transformerClass']::isValidDatabaseData($value, $_transformer['transformerParams'] ?? null)
                 ) {
                     $value = $_transformer['transformerClass']::toProperty($value);
                 }
-                if(!$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams']??null)) {
-                    if ($fieldName!=='id' || (!is_numeric($value) && !is_null($value))){
-                        throw new \InvalidArgumentException('Bad data for property ' . $name. ' '.get_class($value));
+                if (!$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams'] ?? null)) {
+                    if ($fieldName !== 'id' || (!is_numeric($value) && !is_null($value))) {
+                        throw new InvalidArgumentException('Bad data for property ' . $name . ' ' . get_class($value));
                     }
                 }
             }
@@ -503,22 +492,11 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         if (static::isPropertyExist($name) || static::isTableFieldExist($name)) {
             $propertyName = static::isPropertyExist($name) ? $name : null;
             $fieldName = static::isTableFieldExist($name) ? $name : null;
-            $propertyName = $propertyName ?? static::getFieldProperty($fieldName);
             $fieldName = $fieldName ?? static::getPropertyField($propertyName);
-
-            if (!array_key_exists($fieldName, $this->values)) {
-                return null;
+            $propertyName = $propertyName ?? static::getFieldProperty($fieldName);
+            if (array_key_exists($propertyName, $this->values)) {
+                return $this->values[$propertyName];
             }
-            return $this->values[$fieldName];
-
-
-        }
-
-        if (static::isTableFieldExist($name)) {
-            if (!array_key_exists($name, $this->values)) {
-                return null;
-            }
-            return $this->values[$name];
         }
 
         return match ($name) {
@@ -531,16 +509,6 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             'SimpleObjectConfigNameWrite' => static::$SimpleObjectConfigNameWrite,
             default => null,
         };
-    }
-
-    protected function getRelatedModel(Relation $relationship): ?ActiveRecordAbstract
-    {
-        $relatedModelClass = $relationship->getRelatedModel();
-        /** @var ActiveRecordAbstract $relatedModelClass */
-        if ($this->{$relationship->getLocalKey()}) {
-            return $relatedModelClass::one([$relationship->getForeignKey() => $this->{$relationship->getLocalKey()}]);
-        }
-        return null;
     }
 
     public function __toArray(): array
