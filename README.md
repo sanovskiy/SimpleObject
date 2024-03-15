@@ -1,4 +1,4 @@
-# SimpleObject Library Documentation
+# SimpleObject 7.x Library Documentation
 
 ## Introduction
 
@@ -503,9 +503,13 @@ Directory structure:
 We welcome contributions to SimpleObject! If you find any issues or have suggestions for improvements, please feel free to open an issue or submit a pull
 request on GitHub.
 
+## Thanks
+
+Special thanks to ChatGPT for help with routine tasks.
+
 ## License
 
-SimpleObject is distributed under the MIT License. See the LICENSE file for more information.
+SimpleObject is distributed under the MIT License with Custom Conditions. See the LICENSE file for more information.
 
 
 
