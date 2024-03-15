@@ -14,32 +14,44 @@ class Filter
     private ?array $tableFields = null;
 
 
-    public function __construct(protected ActiveRecordAbstract|string $modelClass, protected array $filters)
+    public function __construct(protected array $filters, protected ActiveRecordAbstract|string|null $modelClass = null)
     {
-        if (!is_subclass_of($modelClass, ActiveRecordAbstract::class)) {
-            throw new InvalidArgumentException('Model class must be a subclass of ActiveRecordAbstract');
+        if (!is_null($this->modelClass)) {
+            if (!is_subclass_of($modelClass, ActiveRecordAbstract::class)) {
+                throw new InvalidArgumentException('Model class must be a subclass of ActiveRecordAbstract');
+            }
+            if (is_object($this->modelClass)) {
+                $this->modelClass = get_class($this->modelClass);
+            }
         }
-        if (is_object($this->modelClass)) {
-            $this->modelClass = get_class($this->modelClass);
-        }
-
         $this->buildQuery();
     }
 
     protected function substituteColumnName(string $key): string
     {
-        if ($this->modelClass::isPropertyExist($key)) {
-            return $key;
-        }
-        if ($this->modelClass::isPropertyExist($key)) {
-            return $this->modelClass::getPropertyField($key);
+        if (!is_null($this->modelClass)) {
+            if ($this->modelClass::isPropertyExist($key)) {
+                return $key;
+            }
+            if ($this->modelClass::isPropertyExist($key)) {
+                return $this->modelClass::getPropertyField($key);
+            }
         }
         return $key;
     }
 
     public function getSQL(): string
     {
-        return str_replace('{%fields}', '`' . implode('`, `', $this->tableFields) . '`', $this->sql);
+        if (is_null($this->tableFields)) {
+            return $this->sql;
+        }
+        $config = $this->getPlaceholdersForCurrentDriver();
+        // Replace {%fields} with appropriate syntax for the database
+        $fields = array_map(function ($field) use ($config) {
+            return $config['columnDelimiters']['left'] . $field . $config['columnDelimiters']['right'];
+        }, $this->tableFields);
+
+        return str_replace('{%fields}', '`' . implode('`, `', ($fields)) . '`', $this->sql);
     }
 
     public function getCountSQL(): string
@@ -54,19 +66,24 @@ class Filter
 
     private function getPlaceholdersForCurrentDriver(): ?array
     {
-        return [
+        $placeholders = [
             'mysql' => ['placeholder' => '?', 'offsetPlaceholder' => 'OFFSET ?', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '`', 'right' => '`']],
             'pgsql' => ['placeholder' => '$', 'offsetPlaceholder' => 'OFFSET ?', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '"', 'right' => '"']],
             'mssql' => ['placeholder' => '?', 'offsetPlaceholder' => 'OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '[', 'right' => ']']],
-        ][ConnectionManager::getConfig($this->modelClass::getSimpleObjectConfigNameRead())?->getDriver()] ?: null;
+        ];
+        if (is_null($this->modelClass)) {
+            return $placeholders['mysql'];
+        }
+        return $placeholders[ConnectionManager::getConfig($this->modelClass::getSimpleObjectConfigNameRead())?->getDriver()] ?: null;
 
     }
 
     private function buildQuery(): void
     {
-        $tableName = $this->modelClass::getTableName();
-        $this->tableFields = $this->modelClass::getTableFields();
-
+        $tableName = (is_null($this->modelClass) ? '%table_name%' : $this->modelClass::getTableName());
+        if (!is_null($this->modelClass)) {
+            $this->tableFields = $this->modelClass::getTableFields();
+        }
         // Determine SQL syntax based on the database driver
         $config = $this->getPlaceholdersForCurrentDriver();
         if (empty($config)) {
@@ -79,11 +96,11 @@ class Filter
         // Build SELECT statement
         $this->sql = 'SELECT {%fields} FROM ' . $tableName;
 
-        $result = self::buildFilters($this->filters);
+        $result = self::buildWhere($this->filters);
 
         $this->bind = $result['bind'];
-        if (!empty($result['bind'])){
-            $this->sql .= ' WHERE '. $result['sql'];
+        if (!empty($result['bind'])) {
+            $this->sql .= ' WHERE ' . $result['sql'];
         }
 
 
@@ -110,11 +127,7 @@ class Filter
             }
         }
 
-        // Replace {%fields} with appropriate syntax for the database
-        $fields = array_map(function ($field) use ($config) {
-            return $config['columnDelimiters']['left'] . $field . $config['columnDelimiters']['right'];
-        }, $this->tableFields);
-        $this->sql = str_replace('{%fields}', implode(', ', $fields), $this->sql);
+        //$this->sql = str_replace('{%fields}', implode(', ', $fields), $this->sql);
     }
 
     protected function isMixedKeysArray($arr): bool
@@ -133,92 +146,85 @@ class Filter
         return $hasIntKeys && $hasNonIntKeys;
     }
 
-    const FILTER_TYPE_UNKNOWN = 0b0; // Unknown type
-    const FILTER_TYPE_SCALAR = 0b1; // key is not numeric (table column name or SQL expression) and value is scalar
-    const FILTER_TYPE_COMPARE_SHORT = 0b10; // key is not numeric and there are two elements in value
-    const FILTER_TYPE_COMPARE_LONG = 0b100; // key is numeric and there are three elements in value, and first one is table column name or SQL expression and second is comparison operator
-    const FILTER_TYPE_SUB_FILTER = 0b1000; // key is numeric or ':AND' or ':OR'
-    const FILTER_TYPE_EXPRESSION = 0b10000; // value is instance of QueryExpression
-    const FILTER_TYPE_QUERY_RULE = 0b100000; // value is :ORDER, :LIMIT или :GROUP
-
-    public function getFilterTypeName($type): string
+    protected function substituteOperator(string $operator): string
     {
-        $types = [
-            self::FILTER_TYPE_UNKNOWN => 'Unknown',
-            self::FILTER_TYPE_SCALAR => 'Scalar',
-            self::FILTER_TYPE_COMPARE_SHORT => 'CompareShort',
-            self::FILTER_TYPE_COMPARE_LONG => 'CompareLong',
-            self::FILTER_TYPE_SUB_FILTER => 'SubFilter',
-            self::FILTER_TYPE_EXPRESSION => 'Expression',
-            self::FILTER_TYPE_QUERY_RULE => 'Query rule',
-        ];
-        return array_key_exists($type, $types) ? $types[$type] : 'ERROR: Unsupported type';
-    }
-
-    protected function detectFilterType($key, $value): int
-    {
-        return match (true) {
-            (in_array(strtolower($key), [':order', ':limit', ':group'])) => self::FILTER_TYPE_QUERY_RULE,
-            ($value instanceof QueryExpression) => self::FILTER_TYPE_EXPRESSION,
-            (!is_numeric($key) && is_scalar($value) && $this->modelClass::isTableFieldExist($key)) => self::FILTER_TYPE_SCALAR,
-            (is_numeric($key) && !$this->isMixedKeysArray($value) && is_array($value) && count($value) === 3 && is_string($value[0]) && is_string($value[1])) => self::FILTER_TYPE_COMPARE_LONG,
-            (!is_numeric($key) && !in_array($key, [':AND', ':OR']) && is_array($value) && !$this->isMixedKeysArray($value) && count($value) === 2) => self::FILTER_TYPE_COMPARE_SHORT,
-            ($key === ':AND' || $key === ':OR'), (is_numeric($key) && is_array($value) && !$this->isMixedKeysArray($value)) => self::FILTER_TYPE_SUB_FILTER,
-            default => self::FILTER_TYPE_UNKNOWN
+        return match (trim($operator)) {
+            'is', 'in' => '=',
+            '!=', '!==', 'not', 'not in', 'is not' => '<>',
+            default => $operator,
         };
     }
 
-    public function buildFilters(array $filters): array
+    public function buildWhere(array $filters, $joinBy = 'AND'): array
     {
         $sql = '';
         $bind = [];
-
+        if (!in_array($joinBy, ['AND', 'OR'])) {
+            $joinBy = 'AND';
+        }
+        $subWhereArray = [];
         foreach ($filters as $key => $value) {
             $key = $this->substituteColumnName($key);
-            $filterType = $this->detectFilterType($key, $value);
-
+            $filterType = FilterTypeDetector::detectFilterType($key, $value, $this->modelClass);
+            //echo "filter type is " . FilterTypeDetector::getFilterTypeName($filterType);
+            //var_dump([$key, $value]);
             switch ($filterType) {
-                case self::FILTER_TYPE_QUERY_RULE:
+                case FilterTypeDetector::FILTER_TYPE_QUERY_RULE:
                     // Ignore this. It will be used later in buildQuery().
                     break;
-                case self::FILTER_TYPE_SUB_FILTER:
+                case FilterTypeDetector::FILTER_TYPE_SUB_FILTER:
                     // Handle AND/OR group
-                    $groupType = substr($key, 1);
-                    $subFilters = $this->buildFilters($value);
+
+                    preg_match('/:(AND|OR)(.*)/', $key, $matches);
+                    if (count($matches) >= 3) {
+                        $groupType = $matches[1];
+                    } else {
+                        $groupType = 'AND';
+                    }
+                    $subFilters = $this->buildWhere($value, $groupType);
                     if (!empty($subFilters['sql'])) {
                         if (!empty($sql)) {
-                            $sql .= sprintf(" %s ", $groupType);
+                            $sql .= sprintf(" %s ", $joinBy);
                         }
                         $sql .= sprintf("(%s)", $subFilters['sql']);
                     }
                     $bind = array_merge($bind, $subFilters['bind']);
                     break;
-                case self::FILTER_TYPE_COMPARE_SHORT:
-                    $subSql = sprintf('%s %s ?', $key, $value[0]);
+                case FilterTypeDetector::FILTER_TYPE_COMPARE_SHORT:
+                    $operator = $this->substituteOperator($value[0]);
+                    $subSql = sprintf('%s %s ?', $key, $operator);
                     $bind[] = $value[1];
                     if (!empty($sql)) {
                         $sql .= ' AND ';
                     }
                     $sql .= '(' . $subSql . ')';
                     break;
-                case self::FILTER_TYPE_COMPARE_LONG:
-                    $subSql = sprintf('%s %s ?', $value[0], $value[1]);
-                    $bind[] = $value[2];
-                    if (!empty($sql)) {
-                        $sql .= ' AND ';
+                case FilterTypeDetector::FILTER_TYPE_COMPARE_LONG:
+                    $operator = $this->substituteOperator($value[1]);
+                    if (is_null($value[1])) {
+                        $sql .= sprintf('%s IS' . ($operator == '<>' ? ' NOT' : '') . ' NULL', $value[0]);
+                    } else {
+                        $sql .= sprintf('%s %s ?', $value[0], $operator);
+                        $bind[] = $value[2];
                     }
-                    $sql .= "($subSql)";
-                    break;
-                case self::FILTER_TYPE_SCALAR:
                     if (!empty($sql)) {
-                        $sql .= ' AND ';
+                        $sql .= sprintf(" %s ", $joinBy);
                     }
-                    $sql .= sprintf('%s = ?', $key);
-                    $bind[] = $value;
                     break;
-                case self::FILTER_TYPE_EXPRESSION:
+                case FilterTypeDetector::FILTER_TYPE_SCALAR:
                     if (!empty($sql)) {
-                        $sql .= ' AND ';
+                        $sql .= sprintf(" %s ", $joinBy);
+                    }
+                    if (is_null($value)) {
+                        $sql = sprintf('%s IS NULL', $value[0]);
+                    } else {
+                        $sql .= sprintf('%s = ?', $key);
+                        $bind[] = $value;
+                    }
+                    break;
+                case FilterTypeDetector::FILTER_TYPE_EXPRESSION:
+                    if (!empty($sql)) {
+                        $sql .= sprintf(" %s ", $joinBy);
                     }
                     $sql .= sprintf('%s %s', $key, $value->getExpression());
                     $bind = array_merge($bind, $value->getBindValues());

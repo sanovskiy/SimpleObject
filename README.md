@@ -159,6 +159,12 @@ ModelsGenerator::reverseEngineerModels();
 
 This will create models corresponding to your database tables, making them ready for use with SimpleObject.
 
+## Model properties naming and table primary keys
+All models and model properties are named in CamelCase by splitting table name or column by underscores.
+I.e: field model_id become property ModelId. Column SomeLongFieldName become Somelongfieldname.
+Limitation: Table PK should be named `id` to ensure full compatibility with SimpleObject.
+
+
 ## Usage
 
 SimpleObject allows you to interact with database records using object-oriented models. Here's a basic example of how to use SimpleObject:
@@ -176,6 +182,13 @@ $user->save();
 
 // Retrieving records
 $users = User::find(['status' => 'active']); // result: QueryResult - immutable version of Collection
+
+// or just by PK
+$user = User::one(['id'=>1]);
+// Alternative method
+$user = new User();
+$user->Id = 1;
+$user->load();
 
 // Updating a record
 $user = User::one(['id' => 1]); // result: Your\Models\Namespace\Logic\User
@@ -208,22 +221,23 @@ The filter array passed to the constructor follows a specific format to define c
 
 ```
 $filters = [
-    'column_name' => 'value',                     // Simple equality comparison
-    'column_name' => ['operator', 'value'],       // Comparison with specified operator
+    'column_name' => 'value',                     // Simple equality comparison means "where column_name equals 'value'" 
+    'column_name' => ['operator', 'value'],       // Comparison with specified operator. I.e. 'column_name'=> ['in',[1,2,3]]
     'column_name' => ['>=' , 18],                 // Example: Greater than or equal comparison
-    ':AND' => [                                    // Logical AND group
+    ':AND' => [                                   // Logical AND group
         'column_name' => 'value',
-        'column_name' => ['operator', 'value']
+         ['column_name','operator', 'value']      // Use this method if you need to make several conditions on one field in one level
     ],
-    ':OR' => [                                     // Logical OR group
-        'column_name' => 'value',
-        'column_name' => ['operator', 'value']
+    ':OR' => [                                    // Logical OR group
+        ['column_name','<','value',]
+        ['column_name', '>', 'value']
     ],
     ':ORDER' => ['column_name', 'ASC'],           // Order by clause
-    ':LIMIT' => [5],                               // Limit number of records
-    ':GROUP' => 'column_name'                      // Group by clause
+    ':LIMIT' => [5],                              // Limit number of records
+    ':GROUP' => 'column_name'                     // Group by clause
 ];
 ```
+The top-level of the filter list is always combined using 'AND' logic.
 
 - **Key-Value Pairs:**
     - Key: Represents the column name in the database table or an instruction.
@@ -234,35 +248,6 @@ $filters = [
         - For the order by clause: An array with the column name and the sort direction ('ASC' or 'DESC').
         - For the limit clause: An array containing the limit value (and optionally, the offset value).
         - For the group by clause: A string representing the column name.
-
-#### Filter Type Constants
-
-The `Filter` class defines several constants to represent different types of filter conditions:
-
-- `FILTER_TYPE_UNKNOWN`: Unknown type
-- `FILTER_TYPE_SCALAR`: Simple scalar value comparison
-- `FILTER_TYPE_COMPARE_SHORT`: Comparison with specified operator (short format)
-- `FILTER_TYPE_COMPARE_LONG`: Comparison with specified operator (long format)
-- `FILTER_TYPE_SUB_FILTER`: Logical AND or OR group
-- `FILTER_TYPE_EXPRESSION`: Query expression
-- `FILTER_TYPE_QUERY_RULE`: Query rule instruction (:ORDER, :LIMIT, :GROUP)
-
-#### Method: `buildFilters(array $filters): array`
-
-```
-public function buildFilters(array $filters): array
-```
-
-- **Parameters:**
-    - `$filters`: An associative array containing filter conditions.
-
-- **Return Value:**
-    - An array containing the built SQL query and bind values.
-
-- **Description:**
-    - This method iterates through the provided filter conditions and constructs the corresponding SQL query along with bind values.
-    - It supports various types of filter conditions, including simple scalar comparisons, comparison with specified operators, logical AND/OR groups, query expressions, and query rule instructions (:ORDER, :LIMIT, :GROUP).
-    - The method returns an array with the built SQL query and bind values to be used in prepared statements.
 
 #### Example Usage
 

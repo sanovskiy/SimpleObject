@@ -297,7 +297,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     public static function find(array $conditions): QueryResult
     {
-        $query = new Filter(static::class, $conditions);
+        $query = new Filter($conditions, static::class);
         $stmt = self::getReadConnection()->prepare($query->getSQL());
         $stmt->execute($query->getBind());
 
@@ -312,7 +312,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
     public static function getCount(array $conditions): int
     {
-        $query = new Filter(static::class, $conditions);
+        $query = new Filter($conditions, static::class);
         $stmt = self::getReadConnection()->prepare($query->getCountSQL());
         $stmt->execute($query->getBind());
         return (int)$stmt->fetchColumn();
