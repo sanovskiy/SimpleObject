@@ -3,7 +3,7 @@
 namespace Sanovskiy\SimpleObject\Query;
 
 use InvalidArgumentException;
-use Project\Models\One\Base\Acl\Person;
+use RuntimeException;
 use Sanovskiy\SimpleObject\ActiveRecordAbstract;
 use Sanovskiy\SimpleObject\ConnectionManager;
 
@@ -119,7 +119,7 @@ class Filter
         // Determine SQL syntax based on the database driver
         $config = $this->getPlaceholdersForCurrentDriver();
         if (empty($config)) {
-            throw new \RuntimeException('Unsupported database driver');
+            throw new RuntimeException('Unsupported database driver');
         }
 
         // Build SELECT statement
