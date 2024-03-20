@@ -21,9 +21,13 @@ abstract class AbstractWriter implements ModelWriterInterface
         public readonly string $classExtends
     ) {}
 
-    public function getFullNamespace(): string
+    public function getFullNamespace(?string $forceType=null): string
     {
-        return $this->classNamespace.'\\'.$this->modelType.$this->classNamespaceAddon;
+        $ns = $this->classNamespace.'\\'.($forceType??$this->modelType).$this->classNamespaceAddon;
+        while(str_contains($ns,'\\\\')){
+            $ns = str_replace('\\\\','\\',$ns);
+        }
+        return $ns;
     }
 
     public function getFullDirectoryName(): string

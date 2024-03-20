@@ -12,9 +12,8 @@ class Logic extends AbstractWriter
     public function write()
     {
         $baseClassName = sprintf(
-            '%s\\Base%s\\%s',
-            $this->classNamespace,
-            $this->classNamespaceAddon,
+            '%s%s',
+            $this->getFullNamespace('Base'),
             $this->className
         );
 
