@@ -40,18 +40,20 @@ class Filter
         return $key;
     }
 
-    public function getSQL(): string
+    public function getSQL(string $tableName = null): string
     {
         if (is_null($this->tableFields)) {
-            return $this->sql;
+            if (empty($tableName)) {
+                throw new InvalidArgumentException('Table name needed for call without model');
+            }
+            return str_replace('{%table_name}', $tableName, str_replace('{%fields}', '*', $this->sql));
         }
         $config = $this->getPlaceholdersForCurrentDriver();
         // Replace {%fields} with appropriate syntax for the database
         $fields = array_map(function ($field) use ($config) {
             return $config['columnDelimiters']['left'] . $field . $config['columnDelimiters']['right'];
         }, $this->tableFields);
-
-        return str_replace('{%fields}', '`' . implode('`, `', ($fields)) . '`', $this->sql);
+        return str_replace('{%fields}', implode(', ', ($fields)), $this->sql);
     }
 
     public function getCountSQL(): string
@@ -64,12 +66,42 @@ class Filter
         return $this->bind;
     }
 
+    const PH_VALUE = 'placeholder';
+    const PH_LIMIT_INVERT = 'invertLimitOffsetOrder';
+    const PH_LIMIT = 'limitPlaceholder';
+    const PH_OFFSET = 'offsetPlaceholder';
+    const PH_GROUP = 'groupBy';
+    const PH_DELIMITERS = 'columnDelimiters';
+    const PH_D_LEFT = 'left';
+    const PH_D_RIGHT = 'right';
+
     private function getPlaceholdersForCurrentDriver(): ?array
     {
         $placeholders = [
-            'mysql' => ['placeholder' => '?', 'offsetPlaceholder' => 'OFFSET ?', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '`', 'right' => '`']],
-            'pgsql' => ['placeholder' => '$', 'offsetPlaceholder' => 'OFFSET ?', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '"', 'right' => '"']],
-            'mssql' => ['placeholder' => '?', 'offsetPlaceholder' => 'OFFSET ? ROWS FETCH NEXT ? ROWS ONLY', 'groupBy' => 'GROUP BY', 'columnDelimiters' => ['left' => '[', 'right' => ']']],
+            'mysql' => [
+                self::PH_VALUE => '?',
+                self::PH_LIMIT => 'LIMIT ?',
+                self::PH_OFFSET => 'OFFSET ?',
+                self::PH_LIMIT_INVERT => false,
+                self::PH_GROUP => 'GROUP BY',
+                self::PH_DELIMITERS => [self::PH_D_LEFT => '`', self::PH_D_RIGHT => '`']
+            ],
+            'pgsql' => [
+                self::PH_VALUE => '$',
+                self::PH_LIMIT => 'LIMIT ?',
+                self::PH_OFFSET => 'OFFSET ?',
+                self::PH_LIMIT_INVERT => false,
+                self::PH_GROUP => 'GROUP BY',
+                self::PH_DELIMITERS => [self::PH_D_LEFT => '"', self::PH_D_RIGHT => '"']
+            ],
+            'mssql' => [
+                self::PH_VALUE => '?',
+                self::PH_LIMIT => 'FETCH NEXT ? ROWS ONLY',
+                self::PH_OFFSET => 'OFFSET ? ROWS',
+                self::PH_LIMIT_INVERT => false,
+                self::PH_GROUP => 'GROUP BY',
+                self::PH_DELIMITERS => [self::PH_D_LEFT => '[', self::PH_D_RIGHT => ']']
+            ],
         ];
         if (is_null($this->modelClass)) {
             return $placeholders['mysql'];
@@ -80,7 +112,7 @@ class Filter
 
     private function buildQuery(): void
     {
-        $tableName = (is_null($this->modelClass) ? '%table_name%' : $this->modelClass::getTableName());
+        $tableName = (is_null($this->modelClass) ? '{%table_name}' : $this->modelClass::getTableName());
         if (!is_null($this->modelClass)) {
             $this->tableFields = $this->modelClass::getTableFields();
         }
@@ -89,9 +121,6 @@ class Filter
         if (empty($config)) {
             throw new \RuntimeException('Unsupported database driver');
         }
-        $placeholder = $config['placeholder'];
-        $offsetPlaceholder = $config['offsetPlaceholder'];
-        $groupBy = $config['groupBy'];
 
         // Build SELECT statement
         $this->sql = 'SELECT {%fields} FROM ' . $tableName;
@@ -110,40 +139,25 @@ class Filter
             if (isset($this->filters[$instruction])) {
                 switch ($instruction) {
                     case ':ORDER':
-                        $this->sql .= ' ORDER BY ' . $this->filters[$instruction][0] . ' ' . strtoupper($this->filters[$instruction][1]);
+                        $this->sql .= ' ORDER BY ' . $this->filters[$instruction][0] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
                         break;
                     case ':LIMIT':
-                        $this->sql .= ' LIMIT ' . $placeholder;
-                        $this->bind[] = $this->filters[$instruction][0];
-                        if (count($this->filters[$instruction]) === 2) {
-                            $this->sql .= ' ' . $offsetPlaceholder;
-                            $this->bind[] = $this->filters[$instruction][1];
+                        $bind = [$this->filters[$instruction][0]];
+                        $limitSQL = $config[self::PH_LIMIT];
+                        $offsetSQL = '';
+                        if (count($this->filters[$instruction]) > 1) {
+                            $offsetSQL .= ' ' . $config[self::PH_OFFSET];
+                            $bind[] = $this->filters[$instruction][1];
                         }
+                        $this->sql .= ' '. $config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL);
+                        $this->bind = array_merge($this->bind, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         break;
                     case ':GROUP':
-                        $this->sql .= ' ' . $groupBy . ' ' . $this->filters[$instruction][0];
+                        $this->sql .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT].$this->filters[$instruction][0].$config[self::PH_DELIMITERS][self::PH_D_RIGHT];
                         break;
                 }
             }
         }
-
-        //$this->sql = str_replace('{%fields}', implode(', ', $fields), $this->sql);
-    }
-
-    protected function isMixedKeysArray($arr): bool
-    {
-        if (!is_array($arr)) {
-            return false;
-        }
-
-        $hasNonIntKeys = false;
-        $hasIntKeys = false;
-        foreach ($arr as $key => $value) {
-            $hasIntKeys = is_integer($key);
-            $hasNonIntKeys = is_string($key);
-        }
-
-        return $hasIntKeys && $hasNonIntKeys;
     }
 
     protected function substituteOperator(string $operator): string
@@ -157,7 +171,6 @@ class Filter
 
     public function buildWhere(array $filters, $joinBy = 'AND'): array
     {
-        $sql = '';
         $bind = [];
         if (!in_array($joinBy, ['AND', 'OR'])) {
             $joinBy = 'AND';
@@ -174,7 +187,6 @@ class Filter
                     break;
                 case FilterTypeDetector::FILTER_TYPE_SUB_FILTER:
                     // Handle AND/OR group
-
                     preg_match('/:(AND|OR)(.*)/', $key, $matches);
                     if (count($matches) >= 3) {
                         $groupType = $matches[1];
@@ -183,57 +195,62 @@ class Filter
                     }
                     $subFilters = $this->buildWhere($value, $groupType);
                     if (!empty($subFilters['sql'])) {
-                        if (!empty($sql)) {
-                            $sql .= sprintf(" %s ", $joinBy);
-                        }
-                        $sql .= sprintf("(%s)", $subFilters['sql']);
+                        $subWhereArray[] = sprintf("(%s)", $subFilters['sql']);
                     }
                     $bind = array_merge($bind, $subFilters['bind']);
                     break;
+                // Short comparison
                 case FilterTypeDetector::FILTER_TYPE_COMPARE_SHORT:
                     $operator = $this->substituteOperator($value[0]);
-                    $subSql = sprintf('%s %s ?', $key, $operator);
-                    $bind[] = $value[1];
-                    if (!empty($sql)) {
-                        $sql .= ' AND ';
-                    }
-                    $sql .= '(' . $subSql . ')';
-                    break;
-                case FilterTypeDetector::FILTER_TYPE_COMPARE_LONG:
-                    $operator = $this->substituteOperator($value[1]);
                     if (is_null($value[1])) {
-                        $sql .= sprintf('%s IS' . ($operator == '<>' ? ' NOT' : '') . ' NULL', $value[0]);
+                        $subWhereArray[] = sprintf('%s IS' . ($operator == '<>' ? ' NOT' : '') . ' NULL', $key);
+                    } elseif ($operator === '=' && is_array($value[1]) && FilterTypeDetector::isIndexedArray($value[1])) {
+                        $subWhereArray[] = sprintf('%s IN(' . implode(',', array_fill(0, count($value[1]), '?')) . ')', $key);
+                        $bind = array_merge($bind, $value[1]);
                     } else {
-                        $sql .= sprintf('%s %s ?', $value[0], $operator);
-                        $bind[] = $value[2];
+                        $subWhereArray[] = sprintf('%s %s ?', $key, $operator);
+                        $bind[] = $value[1];
                     }
-                    if (!empty($sql)) {
-                        $sql .= sprintf(" %s ", $joinBy);
+                    break;
+                // Long comparison
+                case FilterTypeDetector::FILTER_TYPE_COMPARE_LONG:
+                    $key = $value[0];
+                    $operator = $this->substituteOperator($value[1]);
+                    if (is_null($value[2])) {
+                        $subWhereArray[] = sprintf('%s IS' . ($operator == '<>' ? ' NOT' : '') . ' NULL', $key);
+                    } elseif (is_array($value[2]) && in_array($operator, ['=', '<>'])) {
+                        $subWhereArray[] = sprintf('%s ' . ($operator == '<>' ? 'NOT ' : '') . 'IN(' . implode(',', array_fill(0, count($value[2]), '?')) . ')', $key);
+                        $bind = array_merge($bind, $value[2]);
+                    } else {
+                        $subWhereArray[] = sprintf('%s %s ?', $value[0], $operator);
+                        $bind[] = $value[2];
                     }
                     break;
                 case FilterTypeDetector::FILTER_TYPE_SCALAR:
-                    if (!empty($sql)) {
-                        $sql .= sprintf(" %s ", $joinBy);
-                    }
                     if (is_null($value)) {
-                        $sql = sprintf('%s IS NULL', $value[0]);
+                        $subWhereArray[] = sprintf('%s IS NULL', $key);
+                    } elseif (is_array($value) && FilterTypeDetector::isIndexedArray($value)) {
+                        $subWhereArray[] = sprintf('%s IN(' . implode(',', array_fill(0, count($value), '?')) . ')', $key);
+                        $bind = array_merge($bind, $value);
                     } else {
-                        $sql .= sprintf('%s = ?', $key);
+                        $subWhereArray[] = sprintf('%s = ?', $key);
                         $bind[] = $value;
                     }
                     break;
                 case FilterTypeDetector::FILTER_TYPE_EXPRESSION:
-                    if (!empty($sql)) {
-                        $sql .= sprintf(" %s ", $joinBy);
+                    /** @var QueryExpression $value */
+                    if (is_numeric($key)) {
+                        $subWhereArray[] = sprintf('(%s)', $value->getExpression());
+                    } else {
+                        $subWhereArray[] = sprintf('(%s %s)', $key, $value->getExpression());
                     }
-                    $sql .= sprintf('%s %s', $key, $value->getExpression());
-                    $bind = array_merge($bind, $value->getBindValues());
+                    $bind = array_merge($bind, $value->getBind());
                     break;
                 default:
                     throw new InvalidArgumentException("Unsupported filter type for key: $key");
             }
         }
-
+        $sql = implode(' ' . $joinBy . ' ', $subWhereArray);
         return compact('sql', 'bind');
     }
 }
