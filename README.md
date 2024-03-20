@@ -483,6 +483,7 @@ Directory structure:
 │  │  └─ ModelWriterInterface.php            [Interface for model writers]
 │  ├─ Query                                  [Directory containing classes for query operations]
 │  │  ├─ Filter.php                          [Class for filtering queries]
+│  │  ├─ FilterTypeDetector.php              [Class for query part type detection]
 │  │  └─ QueryExpression.php                 [Class for query expressions]
 │  ├─ ActiveRecordAbstract.php               [Abstract class for active record pattern]
 │  ├─ ConnectionConfig.php                   [Class for connection configurations]

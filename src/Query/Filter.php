@@ -139,7 +139,7 @@ class Filter
             if (isset($this->filters[$instruction])) {
                 switch ($instruction) {
                     case ':ORDER':
-                        $this->sql .= ' ORDER BY ' . $this->filters[$instruction][0] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
+                        $this->sql .= ' ORDER BY ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
                         break;
                     case ':LIMIT':
                         $bind = [$this->filters[$instruction][0]];
@@ -149,11 +149,11 @@ class Filter
                             $offsetSQL .= ' ' . $config[self::PH_OFFSET];
                             $bind[] = $this->filters[$instruction][1];
                         }
-                        $this->sql .= ' '. $config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL);
+                        $this->sql .= ' ' . $config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL);
                         $this->bind = array_merge($this->bind, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         break;
                     case ':GROUP':
-                        $this->sql .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT].$this->filters[$instruction][0].$config[self::PH_DELIMITERS][self::PH_D_RIGHT];
+                        $this->sql .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT];
                         break;
                 }
             }
