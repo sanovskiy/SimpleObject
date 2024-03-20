@@ -166,15 +166,17 @@ class ModelsGenerator
         $longest = max(array_map(fn($v) => strlen($v), array_keys($tables)));
 
         foreach ($tables as $tableName => $writers) {
+            if (!empty($refs[$tableName])) {
+                $tables[$tableName]['Base']->setReferences($refs[$tableName]);
+            }
+        }
+        foreach ($tables as $tableName => $writers) {
             $this->generateModelForTable($tableName, $writers, $refs, $longest);
         }
     }
 
     private function generateModelForTable(string $tableName, array $writers, array $refs, int $longest): void
     {
-        if (!empty($refs[$tableName])) {
-            $writers['Base']->setReferences($refs[$tableName]);
-        }
         $this->printTableGenerationMessage($tableName, $longest);
         $this->generateBaseModel($writers['Base']);
         $this->term->inline('[ <blue>Base</blue> ] ');

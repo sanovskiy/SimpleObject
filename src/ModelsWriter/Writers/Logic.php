@@ -12,7 +12,7 @@ class Logic extends AbstractWriter
     public function write()
     {
         $baseClassName = sprintf(
-            '%s%s',
+            '%s\\%s',
             $this->getFullNamespace('Base'),
             $this->className
         );
