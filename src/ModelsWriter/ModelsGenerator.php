@@ -198,11 +198,6 @@ class ModelsGenerator
             }
         }
         ksort($refs);
-        print_r([
-            'acl_person'=>$refs['acl_person'],
-            'acl_crowd_person'=>$refs['acl_crowd_person'],
-            'acl_crowd'=>$refs['acl_crowd']
-        ]);
         return $refs;
     }
 
