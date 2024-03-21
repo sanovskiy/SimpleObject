@@ -43,7 +43,7 @@ class Base extends AbstractWriter
             $_property = NamingStyle::toCamelCase($colName, capitalizeFirstCharacter: true);
             $propertiesMapping[$colName] = $_property;
             $comment = sprintf(
-                '@property %-'.$maxColumnNameLength.'s $%-'.$maxColumnNameLength.'s Uses value from %s (%s)',
+                '@property %-' . $maxColumnNameLength . 's $%-' . $maxColumnNameLength . 's Uses value from %s (%s)',
                 $columnSchema->getPHPType(),
                 $_property,
                 $columnSchema->name,
@@ -53,10 +53,10 @@ class Base extends AbstractWriter
             if ($columnSchema->getPHPType() === DateTime::class) {
                 $addUse[] = '\\' . DateTime::class;
             }
-            if (($_trans = $columnSchema->getDefaultTransformation()) && !empty($_trans['transformerClass'])){
-                if (class_exists($_trans['transformerClass'])){
+            if (($_trans = $columnSchema->getDefaultTransformation()) && !empty($_trans['transformerClass'])) {
+                if (class_exists($_trans['transformerClass'])) {
                     $namespace->addUse($_trans['transformerClass']);
-                    $_trans['transformerClass'] = new Literal(pathinfo($_trans['transformerClass'],PATHINFO_FILENAME).'::class') ;
+                    $_trans['transformerClass'] = new Literal(static::extractClassName($_trans['transformerClass']) . '::class');
                 }
                 $transformations[$colName] = $_trans;
             }
@@ -73,7 +73,7 @@ class Base extends AbstractWriter
         if (!empty($this->references['one'])) {
             foreach ($this->references['one'] as $refParent) {
                 $namespace->addUse($refParent['class']);
-                $refObjectName = pathinfo($refParent['class'], PATHINFO_FILENAME);
+                $refObjectName = static::extractClassName($refParent['class']);
                 $_method = $model->addMethod('get' . $refObjectName)
                     ->setPublic()
                     ->setReturnType($refParent['class'])
@@ -85,18 +85,19 @@ class Base extends AbstractWriter
         }
         if (!empty($this->references['many'])) {
             $namespace->addUse(Collection::class);
-            foreach ($this->references['many'] as $localProperty => $refChild) {
-                $namespace->addUse($refChild['class']);
-                $refObjectName = pathinfo($refChild['class'], PATHINFO_FILENAME);
-                $_method = $model->addMethod('get' . $refObjectName . 's')
-                    ->setPublic()
-                    ->setReturnType(Collection::class);
-                $_method->addParameter('filters')->setType('array')->setNullable()->setDefaultValue([])->hasDefaultValue();
+            foreach ($this->references['many'] as $localProperty => $refChildren) {
+                foreach ($refChildren as $refChild) {
+                    $namespace->addUse($refChild['class']);
+                    $refObjectName = static::extractClassName($refChild['class']);
+                    $_method = $model->addMethod('get' . $refObjectName . 's')
+                        ->setPublic()
+                        ->setReturnType(Collection::class);
+                    $_method->addParameter('filters')->setType('array')->setNullable()->setDefaultValue([])->hasDefaultValue();
 
 
-
-                // Prepare method body based on the provided template
-                $_method->setBody(sprintf('return %s::find(array_merge($filters,[\'%s\'=>$this->%s]));',$refObjectName, NamingStyle::toSnakeCase($refChild['property']), NamingStyle::toCamelCase($localProperty, true)));
+                    // Prepare method body based on the provided template
+                    $_method->setBody(sprintf('return %s::find(array_merge($filters,[\'%s\'=>$this->%s]));', $refObjectName, NamingStyle::toSnakeCase($refChild['property']), NamingStyle::toCamelCase($localProperty, true)));
+                }
             }
         }
 
@@ -111,6 +112,11 @@ class Base extends AbstractWriter
         $model->addProperty('TableName', $this->tableSchema->tableName)->setStatic()->setProtected()->setType('string');
 
         return $this->writeFile((string)$namespace);
+    }
+
+    protected static function extractClassName(string $fullClassName): string
+    {
+        return pathinfo(str_replace('\\', DIRECTORY_SEPARATOR, $fullClassName), PATHINFO_FILENAME);
     }
 
     public function setReferences(array $references)

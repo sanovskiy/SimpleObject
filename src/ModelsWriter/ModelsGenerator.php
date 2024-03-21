@@ -192,11 +192,17 @@ class ModelsGenerator
             $columns = $writers['Base']->tableSchema->getColumns();
             foreach ($columns as $colName => $column) {
                 if (!empty($column->references['table'])) {
-                    $refs = $this->generateToOneReference($refs, $tableName, $colName, $tables[$column->references['table']]['Logic']->className, $column, $writers);
                     $refs = $this->generateToManyReference($refs, $tableName, $column, $writers);
+                    $refs = $this->generateToOneReference($refs, $tableName, $colName, $tables[$column->references['table']]['Logic']->className, $column, $writers);
                 }
             }
         }
+        ksort($refs);
+        print_r([
+            'acl_person'=>$refs['acl_person'],
+            'acl_crowd_person'=>$refs['acl_crowd_person'],
+            'acl_crowd'=>$refs['acl_crowd']
+        ]);
         return $refs;
     }
 
@@ -214,7 +220,7 @@ class ModelsGenerator
     private function generateToManyReference(array $refs, string $tableName, ColumnSchema $column, array $writers): array
     {
         // One-to-Many relationship
-        $refs[$column->references['table']]['many'][$column->references['column']] = [
+        $refs[$column->references['table']]['many'][$column->references['column']][] = [
             'class' => $writers['Logic']->getFullNamespace() . '\\' . $writers['Logic']->className,
             'property' => NamingStyle::toCamelCase($column->name, true)
         ];

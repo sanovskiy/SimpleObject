@@ -335,8 +335,10 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
         $data = [];
         foreach (array_keys(static::$propertiesMapping) as $tableFieldName) {
             $value = null;
-            if (isset($this->values[$tableFieldName])) {
-                $value = $this->values[$tableFieldName];
+            $property = static::getFieldProperty($tableFieldName);
+
+            if (isset($this->values[$property])) {
+                $value = $this->values[$property];
             }
 
             $transformer = $this->getTransformerForField($tableFieldName);
@@ -349,6 +351,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $data[$tableFieldName] = $value;
             }
         }
+
         return $data;
     }
 
@@ -479,7 +482,7 @@ class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 }
                 if (!$_transformer['transformerClass']::isValidPropertyData($value, $_transformer['transformerParams'] ?? null)) {
                     if ($fieldName !== 'id' || (!is_numeric($value) && !is_null($value))) {
-                        throw new InvalidArgumentException('Bad data for property ' . $name . ' ' . get_class($value));
+                        throw new InvalidArgumentException('Bad data for property ' . $name . ' ' . (is_object($value)?get_class($value):gettype($value)));
                     }
                 }
             }

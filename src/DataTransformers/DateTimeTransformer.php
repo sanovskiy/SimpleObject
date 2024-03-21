@@ -12,8 +12,11 @@ class DateTimeTransformer extends DataTransformerAbstract
     /**
      * @throws Exception
      */
-    public static function toProperty($value, $params=null): DateTime
+    public static function toProperty($value, $params=null): ?DateTime
     {
+        if (is_null($value)){
+            return null;
+        }
         return is_numeric($value) ? new DateTime("@$value") : new DateTime($value);
     }
 
@@ -28,12 +31,12 @@ class DateTimeTransformer extends DataTransformerAbstract
 
     public static function isValidDatabaseData($value): bool
     {
-        return (is_string($value) && strtotime($value) !== false);
+        return (is_null($value) || (is_string($value) && strtotime($value) !== false));
     }
 
     public static function isValidPropertyData($value): bool
     {
-        return $value instanceof DateTime;
+        return is_null($value) || $value instanceof DateTime;
     }
 }
 
