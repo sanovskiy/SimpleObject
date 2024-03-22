@@ -53,7 +53,7 @@ class FilterTypeDetector
     {
         return !is_numeric($key) &&
             !str_starts_with($key, ':') && // Ensures it is not a query rule like :and, :or, :order, :limit, or :group
-            (is_scalar($value) || is_null($value)) && // Checks if the value is scalar or null
+            ((is_array($value) && static::isIndexedArray($value)) || is_scalar($value) || is_null($value)) && // Checks if the value indexed array (for IN(?)) is scalar or null
             (is_null($modelClass) || $modelClass::isTableFieldExist($key)); // Verifies if this is a table field name (checks only if model supplied)
     }
 

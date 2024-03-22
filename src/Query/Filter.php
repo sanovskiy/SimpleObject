@@ -98,7 +98,7 @@ class Filter
                 self::PH_VALUE => '?',
                 self::PH_LIMIT => 'FETCH NEXT ? ROWS ONLY',
                 self::PH_OFFSET => 'OFFSET ? ROWS',
-                self::PH_LIMIT_INVERT => false,
+                self::PH_LIMIT_INVERT => true,
                 self::PH_GROUP => 'GROUP BY',
                 self::PH_DELIMITERS => [self::PH_D_LEFT => '[', self::PH_D_RIGHT => ']']
             ],
@@ -139,9 +139,18 @@ class Filter
             if (isset($this->filters[$instruction])) {
                 switch ($instruction) {
                     case ':ORDER':
+                        if (!is_array($this->filters[$instruction])){
+                            $parts = explode(' ',$this->filters[$instruction]);
+                            $column = $parts[0];
+                            $dir = $parts[1]??'ASC';
+                            $this->filters[$instruction] = [$column,$dir];
+                        }
                         $this->sql .= ' ORDER BY ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
                         break;
                     case ':LIMIT':
+                        if (!is_array($this->filters[$instruction])){
+                            $this->filters[$instruction] = [$this->filters[$instruction],0];
+                        }
                         $bind = [$this->filters[$instruction][0]];
                         $limitSQL = $config[self::PH_LIMIT];
                         $offsetSQL = '';
@@ -149,7 +158,7 @@ class Filter
                             $offsetSQL .= ' ' . $config[self::PH_OFFSET];
                             $bind[] = $this->filters[$instruction][1];
                         }
-                        $this->sql .= ' ' . $config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL);
+                        $this->sql .= ' ' . ($config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL));
                         $this->bind = array_merge($this->bind, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         break;
                     case ':GROUP':

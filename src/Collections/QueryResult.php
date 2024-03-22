@@ -18,7 +18,7 @@ class QueryResult extends ImmutableCollection
         $this->pdoStatement = $pdoStatement;
     }
 
-    public function getFilters(): Filter
+    public function getFilters(): ?Filter
     {
         return $this->filters;
     }
