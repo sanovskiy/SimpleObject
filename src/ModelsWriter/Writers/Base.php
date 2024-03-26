@@ -46,8 +46,18 @@ class Base extends AbstractWriter
             ->setProtected()->addComment('Default transformations for database values')->addComment('@var TransformRule[]');
         $model->addProperty('initialized')->setStatic()->setPrivate()->setValue(false)->setType('bool');
         $initMethodBody = ['if (self::$initialized) {return;}'];
+
+        $maxColumnNameLength = max(array_map('strlen', array_keys($this->tableSchema->getColumns())));
         foreach ($this->tableSchema->getColumns() as $colName => $columnSchema) {
-            $propertiesMapping[$colName] = NamingStyle::toCamelCase($colName,true);
+            $_property = $propertiesMapping[$colName] = NamingStyle::toCamelCase($colName,true);
+            $comment = sprintf(
+                '@property %-' . $maxColumnNameLength . 's $%-' . $maxColumnNameLength . 's Uses value from %s (%s)',
+                $columnSchema->getPHPType(),
+                $_property,
+                $columnSchema->name,
+                $columnSchema->data_type
+            );
+            $model->addComment($comment);
             $transform = $columnSchema->getDefaultTransformation();
             if (!empty($transform['transformerClass'])) {
                 $transformerClass = $transform['transformerClass'];
@@ -77,9 +87,13 @@ class Base extends AbstractWriter
                     ->setPublic()
                     ->setReturnType($refParent['class'])
                     ->setReturnNullable(true);
-
+                $localPropName = NamingStyle::toCamelCase($refParent['localProperty'],true);
+                $methodBody = [
+                    sprintf("if (!is_integer(\$this->%s) || \$this->%s<1){return null;}", $localPropName, $localPropName),
+                    sprintf('return %s::one([\'%s\'=>$this->%s]);', $refObjectName, NamingStyle::toSnakeCase($refParent['property']), $localPropName)
+                ];
                 // Prepare method body based on the provided template
-                $_method->setBody(sprintf('return %s::one([\'%s\'=>$this->%s]);', $refObjectName, NamingStyle::toSnakeCase($refParent['property']), NamingStyle::toCamelCase($refParent['localProperty'], true)));
+                $_method->setBody(implode(PHP_EOL, $methodBody));
             }
         }
         if (!empty($this->references['many'])) {

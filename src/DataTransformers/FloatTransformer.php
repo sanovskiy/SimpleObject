@@ -7,8 +7,10 @@ use InvalidArgumentException;
 class FloatTransformer extends DataTransformerAbstract
 {
 
-    public static function toProperty($value, $params = null): float
+    public static function toProperty($value, $params = null): ?float
     {
+        if (is_null($value)){return null;}
+
         if (!self::isValidDatabaseData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
         }
@@ -16,8 +18,10 @@ class FloatTransformer extends DataTransformerAbstract
         return (float) $value;
     }
 
-    public static function toDatabaseValue($value, $params = null): string
+    public static function toDatabaseValue($value, $params = null): ?string
     {
+        if (is_null($value)){return null;}
+
         if (!self::isValidPropertyData($value)) {
             throw new InvalidArgumentException('Unsupported value for ' . __METHOD__);
         }

@@ -22,6 +22,7 @@ class DateTimeTransformer extends DataTransformerAbstract
 
     public static function toDatabaseValue($value, $params=null): ?string
     {
+        if (is_null($value)){return null;}
         $date_format = $params['format']??'Y-m-d H:i:s';
         if (self::isValidDatabaseData($value)){
             return $value;
