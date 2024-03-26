@@ -6,6 +6,7 @@ use PDO;
 use RuntimeException;
 use Sanovskiy\SimpleObject\ConnectionConfig;
 use Sanovskiy\SimpleObject\ConnectionManager;
+use Sanovskiy\SimpleObject\Interfaces\ParserInterface;
 
 abstract class ParserAbstract implements ParserInterface
 {

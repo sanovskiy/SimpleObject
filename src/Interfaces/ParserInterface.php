@@ -1,6 +1,6 @@
 <?php
 
-namespace Sanovskiy\SimpleObject\ModelsWriter\Parsers;
+namespace Sanovskiy\SimpleObject\Interfaces;
 
 use Sanovskiy\SimpleObject\ModelsWriter\Schemas\ColumnSchema;
 use Sanovskiy\SimpleObject\ModelsWriter\Schemas\TableSchema;

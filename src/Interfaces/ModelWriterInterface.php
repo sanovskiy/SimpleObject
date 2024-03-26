@@ -1,6 +1,6 @@
 <?php
 
-namespace Sanovskiy\SimpleObject\ModelsWriter\Writers;
+namespace Sanovskiy\SimpleObject\Interfaces;
 
 interface ModelWriterInterface
 {

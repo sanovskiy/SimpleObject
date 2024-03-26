@@ -2,8 +2,8 @@
 
 namespace Sanovskiy\SimpleObject\ModelsWriter\Writers;
 
-use Nette\PhpGenerator\ClassType;
 use Sanovskiy\SimpleObject\ConnectionConfig;
+use Sanovskiy\SimpleObject\Interfaces\ModelWriterInterface;
 use Sanovskiy\SimpleObject\ModelsWriter\Schemas\TableSchema;
 
 abstract class AbstractWriter implements ModelWriterInterface
@@ -61,13 +61,18 @@ abstract class AbstractWriter implements ModelWriterInterface
         if (!file_exists($path)) {
             return (bool) file_put_contents(
                 $path,
-                '<?php'.PHP_EOL.$this->getModelHeader().$contents
+                '<?php'.PHP_EOL.$this->getModelHeader().$contents.$this->getModelFooter()
             );
         }
         return true;
     }
 
     protected function getModelHeader(): string
+    {
+        return '';
+    }
+
+    protected function getModelFooter(): string
     {
         return '';
     }

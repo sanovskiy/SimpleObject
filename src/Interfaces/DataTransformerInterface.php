@@ -1,6 +1,6 @@
 <?php
 
-namespace Sanovskiy\SimpleObject\DataTransformers;
+namespace Sanovskiy\SimpleObject\Interfaces;
 
 interface DataTransformerInterface
 {

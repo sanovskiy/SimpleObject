@@ -2,7 +2,7 @@
 
 namespace Sanovskiy\SimpleObject\ModelsWriter\Schemas;
 
-use Sanovskiy\SimpleObject\ModelsWriter\Parsers\ParserInterface;
+use Sanovskiy\SimpleObject\Interfaces\ParserInterface;
 use Sanovskiy\Utility\NamingStyle;
 
 class TableSchema

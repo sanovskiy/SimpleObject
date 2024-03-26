@@ -7,6 +7,8 @@ use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\Literal;
 use Nette\PhpGenerator\PhpNamespace;
 use Sanovskiy\SimpleObject\Collections\Collection;
+use Sanovskiy\SimpleObject\Collections\QueryResult;
+use Sanovskiy\SimpleObject\TransformRule;
 use Sanovskiy\Utility\NamingStyle;
 
 class Base extends AbstractWriter
@@ -34,40 +36,37 @@ class Base extends AbstractWriter
 
         // Initialize arrays to store properties mapping, additional "use" statements, and transformations
         $propertiesMapping = [];
-        $addUse = [];
-        $transformations = [];
-
-        // Iterate over table columns to generate model properties and comments
-        $maxColumnNameLength = max(array_map('strlen', array_keys($this->tableSchema->getColumns())));
+        $initMethod = $model->addMethod('initStatic')
+            ->setFinal(true)
+            ->setPublic()
+            ->setStatic()
+            ->setReturnType('void');
+        $namespace->addUse(TransformRule::class);
+        $model->addProperty('dataTransformRules', [])->setType('array')->setStatic()
+            ->setProtected()->addComment('Default transformations for database values')->addComment('@var TransformRule[]');
+        $model->addProperty('initialized')->setStatic()->setPrivate()->setValue(false)->setType('bool');
+        $initMethodBody = ['if (self::$initialized) {return;}'];
         foreach ($this->tableSchema->getColumns() as $colName => $columnSchema) {
-            $_property = NamingStyle::toCamelCase($colName, capitalizeFirstCharacter: true);
-            $propertiesMapping[$colName] = $_property;
-            $comment = sprintf(
-                '@property %-' . $maxColumnNameLength . 's $%-' . $maxColumnNameLength . 's Uses value from %s (%s)',
-                $columnSchema->getPHPType(),
-                $_property,
-                $columnSchema->name,
-                $columnSchema->data_type
-            );
-            $model->addComment($comment);
-            if ($columnSchema->getPHPType() === DateTime::class) {
-                $addUse[] = '\\' . DateTime::class;
-            }
-            if (($_trans = $columnSchema->getDefaultTransformation()) && !empty($_trans['transformerClass'])) {
-                if (class_exists($_trans['transformerClass'])) {
-                    $namespace->addUse($_trans['transformerClass']);
-                    $_trans['transformerClass'] = new Literal(static::extractClassName($_trans['transformerClass']) . '::class');
-                }
-                $transformations[$colName] = $_trans;
+            $propertiesMapping[$colName] = NamingStyle::toCamelCase($colName,true);
+            $transform = $columnSchema->getDefaultTransformation();
+            if (!empty($transform['transformerClass'])) {
+                $transformerClass = $transform['transformerClass'];
+                $transformerParams = $transform['transformerParams'] ?? [];
+                $propertyType = $columnSchema->getPHPType();
+                $namespace->addUse($transformerClass);
+                $transformerParamsString = var_export($transformerParams, true);
+                $transformerParamsString = str_replace(['array (', ')', "\n", '  '], ['[', ']', '',' '], $transformerParamsString);
+                $initMethodBody[] = sprintf('static::$dataTransformRules[\'%s\'] = new TransformRule(%s::class, %s, \'%s\');', $colName, self::extractClassName($transformerClass), $transformerParamsString, $propertyType);
             }
         }
+        $initMethodBody[] = 'self::$initialized = true;';
+
+        // Add method body
+        $initMethod->setBody(implode("\n",$initMethodBody));
 
         // Add properties for properties mapping and data transformations
         $model->addProperty('propertiesMapping', $propertiesMapping)->setType('array')
             ->setProtected()->addComment('Model properties for table field mapping')->setStatic();
-        $model->addProperty('dataTransformRules', $transformations)->setType('array')->setStatic()
-            ->setProtected()->addComment('Default transformations for database values');
-
 
         // Generate methods for fetching related objects (if any)
         if (!empty($this->references['one'])) {
@@ -84,27 +83,18 @@ class Base extends AbstractWriter
             }
         }
         if (!empty($this->references['many'])) {
-            $namespace->addUse(Collection::class);
+            $namespace->addUse(QueryResult::class);
             foreach ($this->references['many'] as $localProperty => $refChildren) {
                 foreach ($refChildren as $refChild) {
                     $namespace->addUse($refChild['class']);
                     $refObjectName = static::extractClassName($refChild['class']);
                     $_method = $model->addMethod('get' . $refObjectName . 's')
                         ->setPublic()
-                        ->setReturnType(Collection::class);
+                        ->setReturnType(QueryResult::class);
                     $_method->addParameter('filters')->setType('array')->setNullable()->setDefaultValue([])->hasDefaultValue();
-
-
                     // Prepare method body based on the provided template
                     $_method->setBody(sprintf('return %s::find(array_merge($filters,[\'%s\'=>$this->%s]));', $refObjectName, NamingStyle::toSnakeCase($refChild['property']), NamingStyle::toCamelCase($localProperty, true)));
                 }
-            }
-        }
-
-        // Add additional "use" statements for classes used in the model
-        if (!empty($addUse)) {
-            foreach ($addUse as $_className) {
-                $namespace->addUse($_className);
             }
         }
 
@@ -135,6 +125,11 @@ class Base extends AbstractWriter
  */
 
 BASEMODEL;
+    }
+
+    protected function getModelFooter(): string
+    {
+        return PHP_EOL.$this->className.'::initStatic();'.PHP_EOL;
     }
 
 

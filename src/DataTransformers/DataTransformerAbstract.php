@@ -3,6 +3,7 @@
 namespace Sanovskiy\SimpleObject\DataTransformers;
 
 use InvalidArgumentException;
+use Sanovskiy\SimpleObject\Interfaces\DataTransformerInterface;
 
 abstract class DataTransformerAbstract implements DataTransformerInterface
 {

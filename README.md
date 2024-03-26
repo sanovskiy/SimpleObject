@@ -167,6 +167,8 @@ Limitation: Table PK should be named `id` to ensure full compatibility with Simp
 
 ## Usage
 
+SimpleObject supports basic CRUD operations (Create, Read, Update, Delete) for interacting with database records.
+
 SimpleObject allows you to interact with database records using object-oriented models. Here's a basic example of how to use SimpleObject:
 
 Model names and their properties precisely mirror the names of corresponding database objects but are converted to CamelCase. However, accessing properties by
@@ -179,6 +181,11 @@ $user = new User();
 $user->Name = 'John Doe';
 $user->Email = 'john@example.com';
 $user->save();
+
+// Instantly update value in database and in model property
+$user->store('Name','Jane Doe');
+// You also can use table column name
+$user->store('email','jane@example.com');
 
 // Retrieving records
 $users = User::find(['status' => 'active']); // result: QueryResult - immutable version of Collection
@@ -205,10 +212,6 @@ $userOrders = $user->getShopOrders(); // QueryResult that contain all user's ord
 $orders2024 = $user->getShopOrders(['created_at'=>['>','2024-01-01']]); // all user's orders created after 2024-01-01
 $last5orders = $user->getShopOrders([':LIMIT'=>5,':ORDER'=>['created_at','DESC']]); // last 5 orders
 ```
-
-## Basic Operations
-
-SimpleObject supports basic CRUD operations (Create, Read, Update, Delete) for interacting with database records.
 
 ### Filter Class Documentation
 
@@ -458,33 +461,36 @@ Directory structure:
 │  ├─ DataTransformers                       [Directory containing classes for data transformation]
 │  │  ├─ BooleanTransformer.php              [Class for transforming boolean data]
 │  │  ├─ DataTransformerAbstract.php         [Abstract class for data transformers]
-│  │  ├─ DataTransformerInterface.php        [Interface for data transformers]
 │  │  ├─ DateTimeTransformer.php             [Class for transforming datetime data]
 │  │  ├─ EnumTransformer.php                 [Class for transforming enum data]
 │  │  ├─ FloatTransformer.php                [Class for transforming float data]
 │  │  ├─ IntegerTransformer.php              [Class for transforming integer data]
 │  │  ├─ JsonTransformer.php                 [Class for transforming JSON data]
 │  │  └─ UUIDTransformer.php                 [Class for transforming UUID data]
+│  ├─ Interfaces                             [Directory containing interfaces]
+│  │  ├─ DataTransformerInterface.php        [Interface for data transformers]
+│  │  ├─ ModelWriterInterface.php            [Interface for model writers]
+│  │  └─ ParserInterface.php                 [Interface for database structure parsers]
 │  ├─ ModelsWriter                           [Directory containing classes for generating models]
 │  │  ├─ ModelsGenerator.php                 [Class for generating models]
 │  │  ├─ Parsers                             [Directory containing classes for parsing database structures]
 │  │  │  ├─ ParserAbstract.php               [Abstract class for database structure parsers]
-│  │  │  ├─ ParserInterface.php              [Interface for database structure parsers]
 │  │  │  ├─ ParserMSSQL.php                  [Class for parsing MSSQL database structures]
 │  │  │  ├─ ParserMySQL.php                  [Class for parsing MySQL database structures]
 │  │  │  ├─ ParserPostgreSQL.php             [Class for parsing PostgreSQL database structures]
 │  │  ├─ Schemas                             [Directory containing classes for database schema]
 │  │  │  ├─ ColumnSchema.php                 [Class for database table column schema]
 │  │  │  └─ TableSchema.php                  [Class for table schema]
-│  │  ├─ Writers                             [Directory containing classes for writing models]
-│  │  │  ├─ AbstractWriter.php               [Abstract class for model writers]
-│  │  │  ├─ Base.php                         [Class for basic model writing]
-│  │  │  ├─ Logic.php                        [Class for logic model writing]
-│  │  └─ ModelWriterInterface.php            [Interface for model writers]
+│  │  └─ Writers                             [Directory containing classes for writing models]
+│  │     ├─ AbstractWriter.php               [Abstract class for model writers]
+│  │     ├─ Base.php                         [Class for basic model writing]
+│  │     └─ Logic.php                        [Class for logic model writing]
 │  ├─ Query                                  [Directory containing classes for query operations]
 │  │  ├─ Filter.php                          [Class for filtering queries]
 │  │  ├─ FilterTypeDetector.php              [Class for query part type detection]
 │  │  └─ QueryExpression.php                 [Class for query expressions]
+│  ├─ Traits                                 [Directory containing traits]
+│  │  └─ ActiveRecordIteratorTrait.php       [Trait for ActiveRecordAbstract with implementation of Iterator, ArrayAccess and Countable interfaces]
 │  ├─ ActiveRecordAbstract.php               [Abstract class for active record pattern]
 │  ├─ ConnectionConfig.php                   [Class for connection configurations]
 │  ├─ ConnectionManager.php                  [Class for managing connections]
