@@ -53,7 +53,7 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      * @var string
      */
     protected static string $TableName;
-
+    protected static ?string $TablePK = null;
     /**
      * Mapping of property names to database table fields.
      * @var array ['table_field'=>'TableField']
@@ -221,6 +221,9 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     public function getIdProperty(): string
     {
+        if (!is_null(static::$TablePK)){
+            return static::$propertiesMapping[static::$TablePK];
+        }
         return array_values(static::$propertiesMapping)[0];
     }
 
@@ -234,6 +237,9 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
      */
     protected function getIdField(): string
     {
+        if (!is_null(static::$TablePK)){
+            return static::$TablePK;
+        }
         return static::getTableFields()[0];
     }
 
@@ -383,7 +389,7 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
 
             $rule = $this->getTransformRuleForField($tableFieldName);
 
-            if (!empty($rule)){
+            if (!empty($rule)) {
                 if ($applyTransforms) {
                     $value = $rule->toProperty($value);
                 }

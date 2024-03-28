@@ -17,7 +17,7 @@ class ParserMySQL extends ParserAbstract
         $statement = $this->connection->prepare('SELECT table_name FROM information_schema.tables WHERE table_schema = :database');
         $statement->execute(['database' => $this->database]);
         $tableList = $statement->fetchAll(PDO::FETCH_COLUMN);
-        return array_combine($tableList,array_map(fn($tableName) => new TableSchema($tableName,$this),$tableList));
+        return array_combine($tableList, array_map(fn($tableName) => new TableSchema($tableName, $this), $tableList));
     }
 
     /**
@@ -26,6 +26,9 @@ class ParserMySQL extends ParserAbstract
      */
     public function getTableColumns(string $tableName): array
     {
+        if(!$this->isTableExist($tableName)){
+            throw new \InvalidArgumentException('Table '.$tableName.' doesn\'t exist in database');
+        }
         $statement = $this->connection->prepare("DESCRIBE $tableName");
         $statement->execute();
         $columnsData = $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -62,8 +65,8 @@ class ParserMySQL extends ParserAbstract
             if ($keyInfo) {
                 $foreignKey = $keyInfo['CONSTRAINT_NAME'];
                 $references = [
-                    'table'=>$keyInfo['REFERENCED_TABLE_NAME'],
-                    'column'=>$keyInfo['REFERENCED_COLUMN_NAME']
+                    'table' => $keyInfo['REFERENCED_TABLE_NAME'],
+                    'column' => $keyInfo['REFERENCED_COLUMN_NAME']
                 ];
             }
 
@@ -81,5 +84,24 @@ class ParserMySQL extends ParserAbstract
         }
 
         return $columns;
+    }
+
+    public function getPK(string $tableName): ?string
+    {
+        if(!$this->isTableExist($tableName)){
+            throw new \InvalidArgumentException('Table '.$tableName.' doesn\'t exist in database');
+        }
+        ($stmt = $this->connection->prepare('SHOW INDEX FROM `' . str_replace('`', '', $tableName) . '` WHERE Key_name = \'PRIMARY\''))->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC)['Column_name'] ?? null;
+    }
+
+    public function isTableExist(string $tableName): bool
+    {
+
+        $query = 'SELECT 1 FROM information_schema.tables WHERE table_name = :tableName LIMIT 1';
+        $statement = $this->connection->prepare($query);
+        $statement->execute([':tableName' => $tableName]);
+
+        return (bool)$statement->fetch(PDO::FETCH_ASSOC);
     }
 }

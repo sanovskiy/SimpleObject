@@ -19,6 +19,11 @@ class TableSchema
         return $this->parser->getTableColumns($this->tableName);
     }
 
+    public function getPK(): ?string
+    {
+        return $this->parser->getPK($this->tableName);
+    }
+
     public function getModelName():string
     {
         return NamingStyle::toCamelCase($this->tableName, capitalizeFirstCharacter: true);

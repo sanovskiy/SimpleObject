@@ -19,6 +19,9 @@ class ParserMSSQL extends ParserAbstract
 
     public function getTableColumns(string $tableName): array
     {
+        if(!$this->isTableExist($tableName)){
+            throw new \InvalidArgumentException('Table '.$tableName.' doesn\'t exist in database');
+        }
         $statement = $this->connection->prepare("SELECT column_name, data_type, is_nullable, column_default, ordinal_position
             FROM information_schema.columns
             WHERE table_name = :tableName
@@ -102,5 +105,32 @@ WHERE
         }
 
         return $columns;
+    }
+
+    public function getPK(string $tableName): ?string
+    {
+        if (!$this->isTableExist($tableName)) {
+            throw new \InvalidArgumentException('Table '.$tableName.' doesn\'t exist in database');
+        }
+
+        $query = "SELECT COLUMN_NAME 
+              FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+              WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1 
+              AND TABLE_NAME = :tableName";
+
+        $statement = $this->connection->prepare($query);
+        $statement->execute([':tableName' => $tableName]);
+
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['COLUMN_NAME'] : null;
+    }
+
+    public function isTableExist(string $tableName): bool
+    {
+        $query = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = :tableName";
+        $statement = $this->connection->prepare($query);
+        $statement->execute([':tableName' => $tableName]);
+
+        return (bool)$statement->fetch(PDO::FETCH_ASSOC);
     }
 }

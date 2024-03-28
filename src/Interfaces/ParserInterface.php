@@ -17,4 +17,12 @@ interface ParserInterface
      * @return ColumnSchema[]
      */
     public function getTableColumns(string $tableName): array;
+
+    /**
+     * @param string $tableName
+     * @return string|null
+     */
+    public function getPK(string $tableName): ?string;
+
+    public function isTableExist(string $tableName): bool;
 }

@@ -114,6 +114,7 @@ class ModelsGenerator
     private function parseTable(string $tableName, TableSchema $databaseTable): array
     {
         $modelsDirRules = $this->connectionConfig->getSubFolderRules();
+        $tablePK = $databaseTable->getPK();
         $ClassName = $databaseTable->getModelName();
         $folder = '';
         $namespaceAddon = '';
@@ -145,7 +146,8 @@ class ModelsGenerator
                 subDirectory: $folder,
                 classNamespace: $this->connectionConfig->getModelsNamespace(),
                 classNamespaceAddon: $namespaceAddon,
-                classExtends: $this->connectionConfig->getBaseExtends()
+                classExtends: $this->connectionConfig->getBaseExtends(),
+                tablePK:$tablePK
             ),
             'Logic' => new Logic(
                 connectionConfig: $this->connectionConfig,

@@ -114,7 +114,7 @@ class Base extends AbstractWriter
 
         // Add a property for the table name and write the file
         $model->addProperty('TableName', $this->tableSchema->tableName)->setStatic()->setProtected()->setType('string');
-
+        $model->addProperty('TablePK', $this->tablePK)->setStatic()->setProtected()->setType('?string');
         return $this->writeFile((string)$namespace);
     }
 

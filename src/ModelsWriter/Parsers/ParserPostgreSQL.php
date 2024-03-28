@@ -19,6 +19,9 @@ class ParserPostgreSQL extends ParserAbstract
 
     public function getTableColumns(string $tableName): array
     {
+        if(!$this->isTableExist($tableName)){
+            throw new \InvalidArgumentException('Table '.$tableName.' doesn\'t exist in database');
+        }
         $statement = $this->connection->prepare('SELECT column_name, data_type, is_nullable, column_default, ordinal_position, udt_name
             FROM information_schema.columns
             WHERE table_name = :tableName
@@ -98,5 +101,34 @@ class ParserPostgreSQL extends ParserAbstract
         }
 
         return $columns;
+    }
+
+    public function getPK(string $tableName): ?string
+    {
+        if (!$this->isTableExist($tableName)) {
+            throw new \InvalidArgumentException('Table '.$tableName.' doesn\'t exist in database');
+        }
+
+        $query = "SELECT a.attname AS column_name 
+              FROM pg_constraint AS c 
+              JOIN pg_attribute AS a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey) 
+              WHERE c.contype = 'p' 
+              AND c.conrelid = :tableName::regclass";
+
+        $statement = $this->connection->prepare($query);
+        $statement->execute([':tableName' => $tableName]);
+
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['column_name'] : null;
+    }
+
+
+    public function isTableExist(string $tableName): bool
+    {
+        $query = "SELECT 1 FROM information_schema.tables WHERE table_name = :tableName LIMIT 1";
+        $statement = $this->connection->prepare($query);
+        $statement->execute([':tableName' => $tableName]);
+
+        return (bool)$statement->fetch(PDO::FETCH_ASSOC);
     }
 }
