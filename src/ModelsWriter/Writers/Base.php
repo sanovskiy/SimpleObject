@@ -83,11 +83,11 @@ class Base extends AbstractWriter
             foreach ($this->references['one'] as $refParent) {
                 $namespace->addUse($refParent['class']);
                 $refObjectName = static::extractClassName($refParent['class']);
-                $_method = $model->addMethod('get' . $refObjectName)
+                $localPropName = NamingStyle::toCamelCase($refParent['localProperty'],true);
+                $_method = $model->addMethod(NamingStyle::toCamelCase('get_' . $refParent['localProperty']))
                     ->setPublic()
                     ->setReturnType($refParent['class'])
                     ->setReturnNullable(true);
-                $localPropName = NamingStyle::toCamelCase($refParent['localProperty'],true);
                 $methodBody = [
                     sprintf("if (!is_integer(\$this->%s) || \$this->%s<1){return null;}", $localPropName, $localPropName),
                     sprintf('return %s::one([\'%s\'=>$this->%s]);', $refObjectName, NamingStyle::toSnakeCase($refParent['property']), $localPropName)
