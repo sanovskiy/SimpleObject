@@ -102,7 +102,7 @@ class Base extends AbstractWriter
                 foreach ($refChildren as $refChild) {
                     $namespace->addUse($refChild['class']);
                     $refObjectName = static::extractClassName($refChild['class']);
-                    $_method = $model->addMethod('get' . $refObjectName . 's')
+                    $_method = $model->addMethod('get' . $refObjectName . 's'.$refChild['property'])
                         ->setPublic()
                         ->setReturnType(QueryResult::class);
                     $_method->addParameter('filters')->setType('array')->setNullable()->setDefaultValue([])->hasDefaultValue();
