@@ -31,9 +31,9 @@ class FilterTypeDetector
         return match (true) {
             self::isQueryRule($key) => self::FILTER_TYPE_QUERY_RULE,
             self::isExpression($value) => self::FILTER_TYPE_EXPRESSION,
-            self::isScalar($key, $value, $modelClass) => self::FILTER_TYPE_SCALAR,
             self::isCompareShort($key, $value) => self::FILTER_TYPE_COMPARE_SHORT,
             self::isCompareLong($key, $value) => self::FILTER_TYPE_COMPARE_LONG,
+            self::isScalar($key, $value, $modelClass) => self::FILTER_TYPE_SCALAR,
             self::isSubFilter($key, $value) => self::FILTER_TYPE_SUB_FILTER,
             default => self::FILTER_TYPE_UNKNOWN
         };
@@ -53,7 +53,7 @@ class FilterTypeDetector
     {
         return !is_numeric($key) &&
             !str_starts_with($key, ':') && // Ensures it is not a query rule like :and, :or, :order, :limit, or :group
-            ((is_array($value) && static::isIndexedArray($value)) || is_scalar($value) || is_null($value)) && // Checks if the value indexed array (for IN(?)) is scalar or null
+            ((is_array($value) && static::isIndexedArray($value)) || is_scalar($value) || is_null($value)) && // Checks if the value indexed array (for IN(?)), scalar or null
             (is_null($modelClass) || $modelClass::isTableFieldExist($key)); // Verifies if this is a table field name (checks only if model supplied)
     }
 
@@ -63,7 +63,12 @@ class FilterTypeDetector
             !str_starts_with($key, ':') && // key is not a query rule
             is_array($value) && // value is an array
             self::isIndexedArray($value) && // value is not an associative array
-            count($value) === 2; // value has exactly two elements
+            is_string($value[0]) && // первый элемент - строка (оператор)
+            (
+                (count($value) === 2) ||
+                (strtolower($value[0]) === 'between' && count($value) === 3)
+            ) && // value has exactly two elements OR three elements for BETWEEN
+            in_array(strtolower($value[0]), ['=', '!=', '>', '<', '>=', '<=', '<>', 'in', 'not in', 'is', 'is not', 'like', 'between']);
     }
 
     public static function isCompareLong($key, $value): bool
@@ -71,10 +76,14 @@ class FilterTypeDetector
         return is_numeric($key) && // key is numeric
             !str_starts_with($key, ':') && // key is not a query rule
             is_array($value) && // value is an array
+            (is_string($value[0]) || $value[0] instanceof QueryExpression) && // first element is a string (column name) or QueryExpression
+            is_string($value[1]) &&
             self::isIndexedArray($value) && // value is not an associative array
-            count($value) === 3 && // value has exactly three elements
-            (is_string($value[0]) || $value[0] instanceof QueryExpression) && // first element is a string (column name) or QueryExpression like "col1+col2"
-            is_string($value[1]); // second element is string
+            (
+                (count($value) === 3) ||
+                (strtolower($value[1]) === 'between' && count($value) === 4)
+            ) && // value has exactly three elements OR four elements for BETWEEN
+            in_array(strtolower($value[1]), ['=', '!=', '>', '<', '>=', '<=', '<>', 'in', 'not in', 'is', 'is not', 'like', 'between']);
     }
 
     public static function isSubFilter($key, $value): bool
