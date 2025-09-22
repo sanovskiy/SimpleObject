@@ -14,7 +14,9 @@ class Filter
     const GROUP = ':GROUP';
     const AND_SUBFILTER = ':AND';
     protected ?string $sql = null;
+    protected ?string $sqlInstructions = '';
     protected ?array $bind = null;
+    protected ?array $bindInstructions = null;
     private ?array $tableFields = null;
 
 
@@ -57,7 +59,12 @@ class Filter
         $fields = array_map(function ($field) use ($config) {
             return $config['columnDelimiters']['left'] . $field . $config['columnDelimiters']['right'];
         }, $this->tableFields);
-        return str_replace('{%fields}', implode(', ', ($fields)), $this->sql);
+        return str_replace('{%fields}', implode(', ', ($fields)), $this->sql).' '.$this->sqlInstructions;
+    }
+
+    public function getBind(): array
+    {
+        return array_merge($this->bind, $this->bindInstructions);
     }
 
     public function getCountSQL(): string
@@ -65,7 +72,7 @@ class Filter
         return str_replace('{%fields}', 'count(*)', $this->sql);
     }
 
-    public function getBind(): array
+    public function getCountBind(): array
     {
         return $this->bind;
     }
@@ -149,7 +156,7 @@ class Filter
                             $dir = $parts[1]??'ASC';
                             $this->filters[$instruction] = [$column,$dir];
                         }
-                        $this->sql .= ' ORDER BY ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
+                        $this->sqlInstructions .= ' ORDER BY ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
                         break;
                     case self::LIMIT:
                         if (!is_array($this->filters[$instruction])){
@@ -162,11 +169,11 @@ class Filter
                             $offsetSQL .= ' ' . $config[self::PH_OFFSET];
                             $bind[] = $this->filters[$instruction][1];
                         }
-                        $this->sql .= ' ' . ($config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL));
-                        $this->bind = array_merge($this->bind, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
+                        $this->sqlInstructions .= ' ' . ($config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL));
+                        $this->bindInstructions = array_merge($this->bindInstructions, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         break;
                     case self::GROUP:
-                        $this->sql .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT];
+                        $this->sqlInstructions .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT];
                         break;
                 }
             }

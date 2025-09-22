@@ -537,7 +537,7 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
     {
         $query = new Filter($conditions, static::class);
         $stmt = self::getReadConnection()->prepare($query->getCountSQL());
-        $stmt->execute($query->getBind());
+        $stmt->execute($query->getCountBind());
         return (int)$stmt->fetchColumn();
     }
 
