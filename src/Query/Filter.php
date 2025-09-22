@@ -9,6 +9,10 @@ use Sanovskiy\SimpleObject\ConnectionManager;
 
 class Filter
 {
+    const ORDER = ':ORDER';
+    const LIMIT = ':LIMIT';
+    const GROUP = ':GROUP';
+    const AND_SUBFILTER = ':AND';
     protected ?string $sql = null;
     protected ?array $bind = null;
     private ?array $tableFields = null;
@@ -134,11 +138,11 @@ class Filter
 
 
         // Add additional instructions
-        $instructions = [':ORDER', ':LIMIT', ':GROUP'];
+        $instructions = [self::ORDER, self::LIMIT, self::GROUP];
         foreach ($instructions as $instruction) {
             if (isset($this->filters[$instruction])) {
                 switch ($instruction) {
-                    case ':ORDER':
+                    case self::ORDER:
                         if (!is_array($this->filters[$instruction])){
                             $parts = explode(' ',$this->filters[$instruction]);
                             $column = $parts[0];
@@ -147,7 +151,7 @@ class Filter
                         }
                         $this->sql .= ' ORDER BY ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
                         break;
-                    case ':LIMIT':
+                    case self::LIMIT:
                         if (!is_array($this->filters[$instruction])){
                             $this->filters[$instruction] = [$this->filters[$instruction],0];
                         }
@@ -161,7 +165,7 @@ class Filter
                         $this->sql .= ' ' . ($config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL));
                         $this->bind = array_merge($this->bind, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         break;
-                    case ':GROUP':
+                    case self::GROUP:
                         $this->sql .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT];
                         break;
                 }
@@ -211,12 +215,24 @@ class Filter
                 // Short comparison
                 case FilterTypeDetector::FILTER_TYPE_COMPARE_SHORT:
                     $operator = $this->substituteOperator($value[0]);
-                    if (is_null($value[1])) {
+
+                    // BETWEEN
+                    if (strtolower($value[0]) === 'between' && count($value) === 3) {
+                        $subWhereArray[] = sprintf('%s BETWEEN ? AND ?', $key);
+                        $bind[] = $value[1];
+                        $bind[] = $value[2];
+                    }
+                    // NULL
+                    elseif (is_null($value[1])) {
                         $subWhereArray[] = sprintf('%s IS' . ($operator == '<>' ? ' NOT' : '') . ' NULL', $key);
-                    } elseif ($operator === '=' && is_array($value[1]) && FilterTypeDetector::isIndexedArray($value[1])) {
+                    }
+                    // IN for array
+                    elseif ($operator === '=' && is_array($value[1]) && FilterTypeDetector::isIndexedArray($value[1])) {
                         $subWhereArray[] = sprintf('%s IN(' . implode(',', array_fill(0, count($value[1]), '?')) . ')', $key);
                         $bind = array_merge($bind, $value[1]);
-                    } else {
+                    }
+                    // Default
+                    else {
                         $subWhereArray[] = sprintf('%s %s ?', $key, $operator);
                         $bind[] = $value[1];
                     }
@@ -225,12 +241,24 @@ class Filter
                 case FilterTypeDetector::FILTER_TYPE_COMPARE_LONG:
                     $key = $value[0];
                     $operator = $this->substituteOperator($value[1]);
-                    if (is_null($value[2])) {
+
+                    // BETWEEN
+                    if (strtolower($value[1]) === 'between' && count($value) === 4) {
+                        $subWhereArray[] = sprintf('%s BETWEEN ? AND ?', $key);
+                        $bind[] = $value[2]; // начальное значение
+                        $bind[] = $value[3]; // конечное значение
+                    }
+                    // NULL
+                    elseif (is_null($value[2])) {
                         $subWhereArray[] = sprintf('%s IS' . ($operator == '<>' ? ' NOT' : '') . ' NULL', $key);
-                    } elseif (is_array($value[2]) && in_array($operator, ['=', '<>'])) {
+                    }
+                    // IN for array
+                    elseif (is_array($value[2]) && in_array($operator, ['=', '<>'])) {
                         $subWhereArray[] = sprintf('%s ' . ($operator == '<>' ? 'NOT ' : '') . 'IN(' . implode(',', array_fill(0, count($value[2]), '?')) . ')', $key);
                         $bind = array_merge($bind, $value[2]);
-                    } else {
+                    }
+                    // Default
+                    else {
                         $subWhereArray[] = sprintf('%s %s ?', $value[0], $operator);
                         $bind[] = $value[2];
                     }
