@@ -13,10 +13,10 @@ class Filter
     const LIMIT = ':LIMIT';
     const GROUP = ':GROUP';
     const AND_SUBFILTER = ':AND';
-    protected ?string $sql = null;
+    protected ?string $sql = '';
     protected ?string $sqlInstructions = '';
-    protected ?array $bind = null;
-    protected ?array $bindInstructions = null;
+    protected ?array $bind = [];
+    protected ?array $bindInstructions = [];
     private ?array $tableFields = null;
 
 
@@ -64,7 +64,7 @@ class Filter
 
     public function getBind(): array
     {
-        return array_merge($this->bind, $this->bindInstructions);
+        return array_merge($this->bind, $this->bindInstructions??[]);
     }
 
     public function getCountSQL(): string
