@@ -29,7 +29,7 @@ class BooleanTransformer extends DataTransformerAbstract
         return match (static::$databaseDriver) {
             'mysql' => $value ? '1' : '0',
             'pgsql', 'mssql' => $value ? 't' : 'f',
-            default => throw new RuntimeException('Unsupported driver'),
+            default => throw new RuntimeException('Unsupported drive '.static::$databaseDriver),
         };
     }
 

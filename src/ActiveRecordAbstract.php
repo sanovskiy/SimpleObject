@@ -12,6 +12,7 @@ use PDO;
 use PDOStatement;
 use RuntimeException;
 use Sanovskiy\SimpleObject\Collections\QueryResult;
+use Sanovskiy\SimpleObject\DataTransformers\BooleanTransformer;
 use Sanovskiy\SimpleObject\Query\Filter;
 use Sanovskiy\SimpleObject\Traits\ActiveRecordIteratorTrait;
 use Sanovskiy\Utility\NamingStyle;
@@ -563,7 +564,10 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $value = $this->values[$property];
             }
 
+            //Boolean transformer workaround
+            BooleanTransformer::setDatabaseDriver(ConnectionManager::getConfig(static::getSimpleObjectConfigNameWrite())->getDriver());
             $rule = $this->getTransformRuleForField($tableFieldName);
+
             if ($applyTransforms && $value !== null && !empty($rule)) {
                 $value = $rule->toDatabaseValue($value);
             }
@@ -630,6 +634,8 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             if ($rule->isValidDatabaseData($value)) {
                 $propertyValue = $rule->toProperty($value);
             } elseif ($rule->isValidPropertyData($value)) {
+                //Boolean transformer workaround
+                BooleanTransformer::setDatabaseDriver(ConnectionManager::getConfig(static::getSimpleObjectConfigNameWrite())->getDriver());
                 $DBValue = $rule->toDatabaseValue($value);
             }
         }

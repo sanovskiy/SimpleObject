@@ -59,5 +59,4 @@ class TransformRule
         return $this->propertyType;
     }
 
-
 }
