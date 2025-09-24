@@ -569,9 +569,9 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             }
 
             // Make sure null values are not added to the data array
-            /*if ($value !== null) {
+            if ($value !== null) {
                 $data[$tableFieldName] = $value;
-            }*/
+            }
         }
 
         return $data;
@@ -724,7 +724,7 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             $this->loadedValues = $data;
             return true;
         } catch (Exception $e) {
-            throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), $e->getCode(), $e);
+            throw new RuntimeException('SimpleObject error: ' . $e->getMessage(), (int) $e->getCode(), $e);
         }
     }
 
