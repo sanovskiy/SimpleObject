@@ -568,10 +568,7 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
                 $value = $rule->toDatabaseValue($value);
             }
 
-            // Make sure null values are not added to the data array
-            /*if ($value !== null) {
-                $data[$tableFieldName] = $value;
-            }*/
+            $data[$tableFieldName] = $value;
         }
 
         return $data;
