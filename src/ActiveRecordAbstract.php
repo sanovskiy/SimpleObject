@@ -569,9 +569,9 @@ abstract class ActiveRecordAbstract implements Iterator, ArrayAccess, Countable
             }
 
             // Make sure null values are not added to the data array
-            if ($value !== null) {
+            /*if ($value !== null) {
                 $data[$tableFieldName] = $value;
-            }
+            }*/
         }
 
         return $data;
