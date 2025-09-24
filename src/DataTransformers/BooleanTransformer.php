@@ -17,6 +17,9 @@ class BooleanTransformer extends DataTransformerAbstract
         if (in_array($value, ['0',0,'false','N'],true)){
             return false;
         }
+        if (is_bool($value)){
+            return $value;
+        }
         throw new InvalidArgumentException('Unsupported value for '.__METHOD__);
     }
 
