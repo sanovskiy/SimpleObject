@@ -159,18 +159,30 @@ class Filter
                         $this->sqlInstructions .= ' ORDER BY ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT] . ' ' . strtoupper($this->filters[$instruction][1] ?? 'asc');
                         break;
                     case self::LIMIT:
-                        if (!is_array($this->filters[$instruction])){
-                            $this->filters[$instruction] = [$this->filters[$instruction],0];
+                        if (!is_array($this->filters[$instruction])) {
+                            $this->filters[$instruction] = [$this->filters[$instruction], 0];
                         }
-                        $bind = [$this->filters[$instruction][0]];
-                        $limitSQL = $config[self::PH_LIMIT];
-                        $offsetSQL = '';
-                        if (count($this->filters[$instruction]) > 1) {
-                            $offsetSQL .= ' ' . $config[self::PH_OFFSET];
-                            $bind[] = $this->filters[$instruction][1];
+
+                        $limit = (int) $this->filters[$instruction][0];
+                        $offset = (int) ($this->filters[$instruction][1] ?? 0);
+
+                        // For MySQL/MariaDB we use numbers directly
+                        if (ConnectionManager::getConfig($this->modelClass::getSimpleObjectConfigNameRead())?->getDriver() === 'mysql') {
+                            $this->sqlInstructions .= " LIMIT $limit OFFSET $offset";
+                        } else {
+                            // For other drivers (PostgreSQL, MSSQL, etc.) we use placeholders
+                            $bind = [$limit];
+                            $limitSQL = $config[self::PH_LIMIT]; // 'LIMIT ?'
+                            $offsetSQL = '';
+
+                            if (count($this->filters[$instruction]) > 1) {
+                                $offsetSQL .= ' ' . $config[self::PH_OFFSET]; // 'OFFSET ?'
+                                $bind[] = $offset;
+                            }
+
+                            $this->sqlInstructions .= ' ' . ($config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL));
+                            $this->bindInstructions = array_merge($this->bindInstructions, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         }
-                        $this->sqlInstructions .= ' ' . ($config[self::PH_LIMIT_INVERT] ? ($offsetSQL . ' ' . $limitSQL) : ($limitSQL . ' ' . $offsetSQL));
-                        $this->bindInstructions = array_merge($this->bindInstructions, $config[self::PH_LIMIT_INVERT] ? array_reverse($bind) : $bind);
                         break;
                     case self::GROUP:
                         $this->sqlInstructions .= ' ' . $config[self::PH_GROUP] . ' ' . $config[self::PH_DELIMITERS][self::PH_D_LEFT] . $this->filters[$instruction][0] . $config[self::PH_DELIMITERS][self::PH_D_RIGHT];
