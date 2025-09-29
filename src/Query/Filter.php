@@ -166,17 +166,15 @@ class Filter
                         $limit = (int) $this->filters[$instruction][0];
                         $offset = (int) ($this->filters[$instruction][1] ?? 0);
 
-                        // For MySQL/MariaDB we use numbers directly
                         if (ConnectionManager::getConfig($this->modelClass::getSimpleObjectConfigNameRead())?->getDriver() === 'mysql') {
                             $this->sqlInstructions .= " LIMIT $limit OFFSET $offset";
                         } else {
-                            // For other drivers (PostgreSQL, MSSQL, etc.) we use placeholders
                             $bind = [$limit];
-                            $limitSQL = $config[self::PH_LIMIT]; // 'LIMIT ?'
+                            $limitSQL = $config[self::PH_LIMIT];
                             $offsetSQL = '';
 
                             if (count($this->filters[$instruction]) > 1) {
-                                $offsetSQL .= ' ' . $config[self::PH_OFFSET]; // 'OFFSET ?'
+                                $offsetSQL .= ' ' . $config[self::PH_OFFSET];
                                 $bind[] = $offset;
                             }
 
