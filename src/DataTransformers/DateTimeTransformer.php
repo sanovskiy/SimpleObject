@@ -30,12 +30,12 @@ class DateTimeTransformer extends DataTransformerAbstract
         return $value->format($date_format);
     }
 
-    public static function isValidDatabaseData($value): bool
+    public static function isValidDatabaseData($value, ?array $params = null): bool
     {
         return (is_null($value) || (is_string($value) && strtotime($value) !== false));
     }
 
-    public static function isValidPropertyData($value): bool
+    public static function isValidPropertyData($value, ?array $params = null): bool
     {
         return is_null($value) || $value instanceof DateTime;
     }

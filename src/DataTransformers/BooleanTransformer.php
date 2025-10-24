@@ -33,12 +33,12 @@ class BooleanTransformer extends DataTransformerAbstract
         };
     }
 
-    public static function isValidDatabaseData($value): bool
+    public static function isValidDatabaseData($value, ?array $params = null): bool
     {
         return in_array($value,['1',1,'true','Y','0',0,'false','N'],true);
     }
 
-    public static function isValidPropertyData($value): bool
+    public static function isValidPropertyData($value, ?array $params = null): bool
     {
         return is_bool($value);
     }

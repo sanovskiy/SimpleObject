@@ -27,12 +27,12 @@ class JsonTransformer extends DataTransformerAbstract
         return (string)json_encode($value);
     }
 
-    public static function isValidDatabaseData($value): bool
+    public static function isValidDatabaseData($value, ?array $params = null): bool
     {
         return is_null($value) || (json_decode($value) !== null && json_last_error() === JSON_ERROR_NONE);
     }
 
-    public static function isValidPropertyData($value): bool
+    public static function isValidPropertyData($value, ?array $params = null): bool
     {
         return true;
     }
