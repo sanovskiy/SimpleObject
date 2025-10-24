@@ -33,12 +33,12 @@ class TransformRule
 
     public function isValidPropertyData(mixed $value): bool
     {
-        return $this->transformerClass::isValidPropertyData($value);
+        return $this->transformerClass::isValidPropertyData($value, $this->transformerParams);
     }
 
     public function isValidDatabaseData(mixed $value): bool
     {
-        return $this->transformerClass::isValidDatabaseData($value);
+        return $this->transformerClass::isValidDatabaseData($value, $this->transformerParams);
     }
 
     /**

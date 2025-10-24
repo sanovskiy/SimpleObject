@@ -28,12 +28,12 @@ class FloatTransformer extends DataTransformerAbstract
         return (string) $value;
     }
 
-    public static function isValidDatabaseData($value): bool
+    public static function isValidDatabaseData($value, ?array $params = null): bool
     {
         return is_null($value) || is_numeric($value);
     }
 
-    public static function isValidPropertyData($value): bool
+    public static function isValidPropertyData($value, ?array $params = null): bool
     {
         return is_null($value) || is_float($value);
     }

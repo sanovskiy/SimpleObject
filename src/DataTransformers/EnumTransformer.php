@@ -16,7 +16,7 @@ class EnumTransformer extends DataTransformerAbstract
         self::$validValues = $validValues;
     }
 
-    public static function toProperty($value, $params = null)
+    public static function toProperty($value, ?array $params = null)
     {
         if (!static::isValidDatabaseData($value,$params)) {
             throw new InvalidArgumentException('Invalid data for ' . __METHOD__);
@@ -25,7 +25,7 @@ class EnumTransformer extends DataTransformerAbstract
         return $value;
     }
 
-    public static function toDatabaseValue($value, $params = null)
+    public static function toDatabaseValue($value, ?array $params = null)
     {
         if (!static::isValidPropertyData($value,$params)) {
             throw new InvalidArgumentException('Invalid data for ' . __METHOD__);
@@ -34,12 +34,12 @@ class EnumTransformer extends DataTransformerAbstract
         return $value;
     }
 
-    public static function isValidDatabaseData($value, $params = null): bool
+    public static function isValidDatabaseData($value, ?array $params = null): bool
     {
         return in_array($value, $params['allowed_values']);
     }
 
-    public static function isValidPropertyData($value, $params = null): bool
+    public static function isValidPropertyData($value, ?array $params = null): bool
     {
         return in_array($value, $params['allowed_values'], true);
     }
